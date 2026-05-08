@@ -8,16 +8,16 @@ import { ThemeSwitcher } from "./ThemeSwitcher";
 import { Button } from "../ui/Button";
 
 const pages = [
-  { path: "/", label: "Dashboard", detail: "Operational readiness, endpoints, and live request testing." },
-  { path: "/setup", label: "Setup", detail: "Bring keys, credentials, catalog, and pools into a usable state." },
+  { path: "/", label: "Dashboard", detail: "Readiness checks, client endpoints, and a routed request test." },
+  { path: "/setup", label: "Setup", detail: "Required configuration for keys, credentials, catalog, and pools." },
   { path: "/keys", label: "Keys", detail: "Client keys, scope policy, budgets, and rate limits." },
   { path: "/models", label: "Models", detail: "Provider catalog, model inventory, and availability." },
   { path: "/pools", label: "Pools", detail: "Routing aliases, upstream priority, weights, and credentials." },
   { path: "/credentials", label: "Credentials", detail: "API keys, OAuth, browser sessions, and local CLI agents." },
   { path: "/audit", label: "Audit", detail: "Request history, captured payloads, cost, and latency evidence." },
   { path: "/budgets", label: "Budgets", detail: "Usage controls and spend guardrails." },
-  { path: "/health", label: "Health", detail: "Upstream readiness, cooldowns, and operational status." },
-  { path: "/events", label: "Events", detail: "Realtime admin events from the local control plane." },
+  { path: "/health", label: "Health", detail: "Upstream status, cooldowns, and probe results." },
+  { path: "/events", label: "Events", detail: "Admin events from the local control plane." },
   { path: "/settings", label: "Settings", detail: "Advanced configuration editors and provider metadata." }
 ];
 

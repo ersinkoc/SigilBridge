@@ -2583,6 +2583,7 @@ label.check-row {
   text-align: left;
 }
 
+.command-item.active,
 .command-item:hover,
 .command-item:focus-visible {
   background: var(--color-panel-soft);

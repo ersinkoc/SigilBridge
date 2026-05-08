@@ -10,9 +10,9 @@ import type { AuditResponse, BudgetResponse, ChatTestResponse, CredentialsRespon
 
 const quickActions = [
   { to: "/keys/new", label: "Create client key", icon: KeyRound },
-  { to: "/credentials", label: "Connect provider", icon: PlugZap },
-  { to: "/models", label: "Review models", icon: ClipboardList },
-  { to: "/pools", label: "Wire routing", icon: Route }
+  { to: "/credentials", label: "Credentials", icon: PlugZap },
+  { to: "/models", label: "Model catalog", icon: ClipboardList },
+  { to: "/pools", label: "Routing pools", icon: Route }
 ];
 
 export function HomeRoute() {
@@ -86,8 +86,8 @@ export function HomeRoute() {
           <div className="readiness-score">
             <span>{readyCount}/{readinessRows.length}</span>
             <div>
-              <h2>Operational readiness</h2>
-              <p>{nextStep.ok ? "The local bridge is wired. Run a chat test or inspect audit details." : `Next: ${nextStep.name.toLowerCase()}`}</p>
+              <h2>Readiness checks</h2>
+              <p>{nextStep.ok ? "Required checks are complete. Run a request test or inspect audit details." : `Next check: ${nextStep.name}`}</p>
             </div>
           </div>
           <div className="readiness-list">
@@ -107,8 +107,8 @@ export function HomeRoute() {
         <div className="command-stack">
           <Card className="next-action">
             <div>
-              <span className={nextStep.ok ? "status-pill ok" : "status-pill bad"}>{nextStep.ok ? "Ready" : "Action needed"}</span>
-              <h2>{nextStep.ok ? "Bridge is routable" : nextStep.name}</h2>
+              <span className={nextStep.ok ? "status-pill ok" : "status-pill bad"}>{nextStep.ok ? "Complete" : "Required"}</span>
+              <h2>{nextStep.ok ? "Routing path configured" : nextStep.name}</h2>
               <p>{nextStep.meta}</p>
             </div>
             <Link to={nextStep.to}>
@@ -136,8 +136,8 @@ export function HomeRoute() {
         <Card className="overview-panel">
           <div className="panel-heading">
             <div>
-              <h2>Control surface</h2>
-              <p>Common operations for bringing a provider online and checking traffic.</p>
+              <h2>Common tasks</h2>
+              <p>Open the primary admin workflows from one place.</p>
             </div>
             <HeartPulse size={20} />
           </div>
@@ -211,7 +211,7 @@ function EndpointGroup({ title, rows }: { title: string; rows: Array<[string, st
     <div className="endpoint-group">
       <strong>{title}</strong>
       {rows.map(([label, value]) => (
-        <EndpointRow key={label} label={label} value={value || "Loading"} />
+        <EndpointRow key={label} label={label} value={value} />
       ))}
     </div>
   );
@@ -255,8 +255,8 @@ type ChatInspector = {
 
 function ChatTester({ pools }: { pools: PoolDTO[] }) {
   const [model, setModel] = useState("");
-  const [message, setMessage] = useState("Reply with one sentence confirming the active upstream.");
-  const [lines, setLines] = useState<ChatLine[]>([{ role: "assistant", content: "Chat tester is ready.", meta: "admin route" }]);
+  const [message, setMessage] = useState("Reply with one sentence confirming the selected upstream.");
+  const [lines, setLines] = useState<ChatLine[]>([{ role: "assistant", content: "No request has been sent.", meta: "request test" }]);
   const [inspector, setInspector] = useState<ChatInspector>({});
   const modelOptions = pools.map((pool) => pool.id).filter(Boolean);
   const selectedModel = model || modelOptions[0] || "";
@@ -299,8 +299,8 @@ function ChatTester({ pools }: { pools: PoolDTO[] }) {
     <Card className="chat-tester">
       <div className="panel-heading">
         <div>
-          <h2>Live chat test</h2>
-          <p>Send a real request through a selected pool and inspect the upstream response immediately.</p>
+          <h2>Request test</h2>
+          <p>Send one request through a selected pool and inspect the upstream response.</p>
         </div>
         <Bot size={20} />
       </div>

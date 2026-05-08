@@ -151,6 +151,13 @@ test("renders the dashboard and toggles theme", async ({ page }) => {
   await page.getByRole("button", { name: /Audit Request history/ }).click();
   await expect(page).toHaveURL(/\/admin\/ui\/audit$/);
   await page.goto("/admin/ui/");
+  await page.getByRole("button", { name: "Open command palette" }).waitFor();
+  await page.locator("body").focus();
+  await page.keyboard.press("Control+K");
+  await page.getByPlaceholder("Search screens and actions").fill("budget");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/admin\/ui\/budgets$/);
+  await page.goto("/admin/ui/");
   await page.getByLabel("Dark").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Send" }).click();

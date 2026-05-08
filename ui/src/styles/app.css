@@ -536,6 +536,12 @@ textarea:focus-visible,
   border-color: color-mix(in srgb, var(--color-danger) 24%, var(--color-line));
 }
 
+.status-pill.muted-pill {
+  color: var(--color-muted);
+  background: var(--color-panel-soft);
+  border-color: var(--color-line);
+}
+
 .metric-value {
   display: block;
   font-size: 32px;
@@ -1181,6 +1187,132 @@ textarea:focus-visible,
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.setup-wizard-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 16px;
+  align-items: start;
+}
+
+.setup-wizard-card,
+.setup-next-card {
+  display: grid;
+  gap: 14px;
+}
+
+.setup-progress {
+  height: 9px;
+  overflow: hidden;
+  background: var(--color-panel-soft);
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+}
+
+.setup-progress span {
+  display: block;
+  height: 100%;
+  background: var(--color-brand);
+  transition: width 160ms ease;
+}
+
+.setup-step-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.setup-step {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 84px;
+  padding: 12px;
+  background: var(--color-panel-soft);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+}
+
+.setup-step.active {
+  background: color-mix(in srgb, var(--color-brand) 8%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-brand) 30%, var(--color-line));
+}
+
+.setup-step.complete {
+  border-color: color-mix(in srgb, var(--color-success) 22%, var(--color-line));
+}
+
+.setup-step-marker {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--color-muted);
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.setup-step.complete .setup-step-marker {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 9%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-success) 28%, var(--color-line));
+}
+
+.setup-step.active .setup-step-marker {
+  color: var(--color-brand-strong);
+  background: color-mix(in srgb, var(--color-brand) 12%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-brand) 32%, var(--color-line));
+}
+
+.setup-step-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.setup-step-copy span,
+.setup-step-copy em,
+.setup-next-card span,
+.setup-next-card p {
+  color: var(--color-muted);
+}
+
+.setup-step-copy em {
+  font-style: normal;
+}
+
+.setup-next-card {
+  position: sticky;
+  top: 18px;
+  align-content: start;
+}
+
+.setup-next-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  color: var(--color-brand-strong);
+  background: color-mix(in srgb, var(--color-brand) 10%, var(--color-panel));
+  border: 1px solid color-mix(in srgb, var(--color-brand) 28%, var(--color-line));
+  border-radius: 8px;
+}
+
+.setup-next-card h2,
+.setup-next-card p {
+  margin: 0;
+}
+
+.setup-next-card > div:not(.setup-next-icon) {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .setup-flow {
@@ -2699,6 +2831,7 @@ label.check-row {
 
   .credential-workbench,
   .setup-command-row,
+  .setup-wizard-layout,
   .key-create-layout,
   .wizard-layout,
   .wizard-rail,
@@ -2717,6 +2850,10 @@ label.check-row {
 
   .setup-flow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .setup-next-card {
+    position: static;
   }
 
   .setup-inventory-grid {
@@ -2859,6 +2996,7 @@ label.check-row {
 
   .credential-form-grid,
   .setup-flow,
+  .setup-step,
   .setup-inventory-grid,
   .setup-score-card,
   .setup-endpoint-row,

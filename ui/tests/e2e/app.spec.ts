@@ -162,6 +162,11 @@ test("renders the dashboard and toggles theme", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("dashboard tester ok", { exact: true })).toBeVisible();
+  await page.goto("/admin/ui/setup");
+  await expect(page.getByRole("heading", { name: "Guided setup" })).toBeVisible();
+  await expect(page.getByText("40% complete")).toBeVisible();
+  await expect(page.getByText("Current step")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add provider authentication" })).toBeVisible();
 });
 
 test("covers key, pool, credential, audit, and login workflows", async ({ page }) => {

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CheckCircle2, Clipboard, KeyRound, Layers3, MessageSquareText, PlugZap, Route, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clipboard, KeyRound, Layers3, MessageSquareText, PlugZap, Route, ShieldCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ComponentType } from "react";
@@ -18,6 +18,7 @@ type SetupStep = {
   action: string;
   to: string;
   icon: ComponentType<{ size?: number }>;
+  outcome: string;
   secondary?: string;
 };
 
@@ -43,6 +44,8 @@ export function SetupRoute() {
   });
   const readyCount = readySteps.filter((step) => step.ready).length;
   const nextStep = readySteps.find((step) => !step.ready) ?? readySteps[readySteps.length - 1];
+  const firstIncompleteIndex = readySteps.findIndex((step) => !step.ready);
+  const activeIndex = firstIncompleteIndex === -1 ? readySteps.length - 1 : firstIncompleteIndex;
   const NextIcon = nextStep.icon;
 
   return (
@@ -74,30 +77,7 @@ export function SetupRoute() {
             </Card>
             <EndpointMiniPanel endpoints={endpoints.data} />
           </div>
-          <div className="setup-flow">
-            {readySteps.map((step, index) => {
-              const Icon = step.icon;
-              return (
-                <Card className={step.ready ? "setup-flow-card ready" : "setup-flow-card"} key={step.id}>
-                  <div className="setup-flow-index">{index + 1}</div>
-                  <div className="setup-flow-body">
-                    <div className="panel-heading">
-                      <div>
-                        <h2>{step.title}</h2>
-                        <p>{step.detail}</p>
-                      </div>
-                      {step.ready ? <CheckCircle2 size={21} /> : <Icon size={21} />}
-                    </div>
-                    <span className={step.ready ? "status-pill ok" : "status-pill"}>{step.ready ? "Ready" : "Needs setup"}</span>
-                    {step.secondary ? <span className="muted">{step.secondary}</span> : null}
-                    <Link to={step.to}>
-                      <Button icon={<Icon size={15} />}>{step.action}</Button>
-                    </Link>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          <SetupWizard steps={readySteps} activeIndex={activeIndex} readyCount={readyCount} />
           <div className="setup-inventory-grid">
             <InventoryCard title="Client keys" value={bridgeKeys.filter((key) => !key.revoked_at).length} detail={`${bridgeKeys.length} total bridge keys`} icon={KeyRound} to="/keys" />
             <InventoryCard title="Provider auth" value={apiKeys.length + cliAgents.length} detail={`${apiKeys.length} API keys, ${cliAgents.length} CLI agents`} icon={PlugZap} to="/credentials" />
@@ -106,6 +86,66 @@ export function SetupRoute() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function SetupWizard({ steps, activeIndex, readyCount }: { steps: SetupStep[]; activeIndex: number; readyCount: number }) {
+  const activeStep = steps[activeIndex] ?? steps[steps.length - 1];
+  const ActiveIcon = activeStep.icon;
+  const progress = Math.round((readyCount / steps.length) * 100);
+  return (
+    <div className="setup-wizard-layout">
+      <Card className="setup-wizard-card">
+        <div className="panel-heading">
+          <div>
+            <h2>Guided setup</h2>
+            <p>{readyCount === steps.length ? "All required bridge checks are complete." : `Step ${activeIndex + 1} of ${steps.length}: ${activeStep.title}`}</p>
+          </div>
+          <span className={readyCount === steps.length ? "status-pill ok" : "status-pill"}>{progress}% complete</span>
+        </div>
+        <div className="setup-progress" role="progressbar" aria-label="Setup progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <ol className="setup-step-list">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = index === activeIndex && !step.ready;
+            const state = step.ready ? "complete" : isActive ? "active" : "queued";
+            return (
+              <li className={`setup-step ${state}`} key={step.id} aria-current={isActive ? "step" : undefined}>
+                <span className="setup-step-marker">{step.ready ? <CheckCircle2 size={17} /> : index + 1}</span>
+                <div className="setup-step-copy">
+                  <strong>{step.title}</strong>
+                  <span>{step.detail}</span>
+                  <em>{step.outcome}</em>
+                </div>
+                <span className={step.ready ? "status-pill ok" : isActive ? "status-pill" : "status-pill muted-pill"}>{step.ready ? "Complete" : isActive ? "Current step" : "Queued"}</span>
+                <Link to={step.to}>
+                  <Button variant={isActive ? "primary" : "secondary"} icon={<Icon size={15} />}>
+                    {step.action}
+                  </Button>
+                </Link>
+              </li>
+            );
+          })}
+        </ol>
+      </Card>
+      <Card className="setup-next-card">
+        <div className="setup-next-icon">
+          <ActiveIcon size={22} />
+        </div>
+        <div>
+          <span>Next action</span>
+          <h2>{activeStep.title}</h2>
+          <p>{activeStep.outcome}</p>
+        </div>
+        <Link to={activeStep.to}>
+          <Button variant="primary" icon={<ArrowRight size={16} />}>
+            {activeStep.action}
+          </Button>
+        </Link>
+      </Card>
     </div>
   );
 }
@@ -131,7 +171,7 @@ function EndpointMiniPanel({ endpoints }: { endpoints?: EndpointInfoResponse }) 
           <div className="setup-endpoint-row" key={row.label}>
             <span>{row.label}</span>
             <code title={row.value}>{row.value ?? "-"}</code>
-            <Button icon={<Clipboard size={14} />} onClick={() => copy(row.value)}>
+            <Button icon={<Clipboard size={14} />} onClick={() => copy(row.value)} disabled={!row.value}>
               Copy
             </Button>
           </div>
@@ -177,7 +217,8 @@ function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; 
       ready: input.bridgeKeyReady,
       action: input.bridgeKeyReady ? "Manage keys" : "Create key",
       to: input.bridgeKeyReady ? "/keys" : "/keys/new",
-      icon: KeyRound
+      icon: KeyRound,
+      outcome: "External clients need one scoped bridge key before they can call the ingress endpoints."
     },
     {
       id: "provider-auth",
@@ -186,7 +227,8 @@ function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; 
       ready: input.credentialReady,
       action: input.credentialReady ? "Manage credentials" : "Add API key",
       to: input.credentialReady ? "/credentials" : "/credentials/api-key/new",
-      icon: PlugZap
+      icon: PlugZap,
+      outcome: "A pool can only route real traffic after at least one provider credential or local agent is available."
     },
     {
       id: "model-catalog",
@@ -195,7 +237,8 @@ function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; 
       ready: input.catalogReady,
       action: "Open catalog",
       to: "/models",
-      icon: Layers3
+      icon: Layers3,
+      outcome: "Model IDs and provider adapters should be selected from the catalog instead of typed from memory."
     },
     {
       id: "pool-routing",
@@ -204,7 +247,8 @@ function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; 
       ready: input.poolsReady,
       action: input.poolsReady ? "Manage pools" : "Configure pools",
       to: "/pools",
-      icon: Route
+      icon: Route,
+      outcome: "Pools define the alias clients use and the ordered upstreams SigilBridge may call."
     },
     {
       id: "test",
@@ -213,7 +257,8 @@ function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; 
       ready: input.bridgeKeyReady && input.credentialReady && input.poolsReady,
       action: "Open tester",
       to: "/",
-      icon: MessageSquareText
+      icon: MessageSquareText,
+      outcome: "The request test confirms authentication, routing, adapter compatibility, and audit capture in one pass."
     }
   ];
 }

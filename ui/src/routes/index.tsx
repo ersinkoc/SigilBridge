@@ -129,7 +129,7 @@ export function HomeRoute() {
         </div>
       </div>
 
-      <EndpointPanel endpoints={endpoints.data} />
+      <EndpointPanel endpoints={endpoints.data} loading={endpoints.isLoading} error={endpoints.error instanceof Error ? endpoints.error.message : ""} />
 
       <div className="workbench-grid">
         <ChatTester pools={pools.data ?? []} />
@@ -169,18 +169,19 @@ export function HomeRoute() {
   );
 }
 
-function EndpointPanel({ endpoints }: { endpoints?: EndpointInfoResponse }) {
+function EndpointPanel({ endpoints, loading, error }: { endpoints?: EndpointInfoResponse; loading: boolean; error?: string }) {
   const openAIChat = endpoints?.openai_chat ?? "";
   const openAIModels = endpoints?.openai_models ?? "";
   const openAIBase = endpoints?.openai_base ?? "";
   const anthropicMessages = endpoints?.anthropic_messages ?? "";
   const anthropicBase = endpoints?.anthropic_base ?? "";
+  const status = error ? "Unavailable" : loading ? "Loading" : "Not configured";
   return (
     <Card className="endpoint-panel">
       <div className="panel-heading">
         <div>
           <h2>Client endpoints</h2>
-          <p>Use a SigilBridge key as the bearer token. These URLs are ready to paste into OpenAI- and Anthropic-compatible clients.</p>
+          <p>{error ? `Endpoint metadata failed: ${error}` : "Use a SigilBridge key as the bearer token. These URLs are ready to paste into OpenAI- and Anthropic-compatible clients."}</p>
         </div>
         <ClipboardList size={20} />
       </div>
@@ -188,16 +189,16 @@ function EndpointPanel({ endpoints }: { endpoints?: EndpointInfoResponse }) {
         <EndpointGroup
           title="OpenAI-compatible"
           rows={[
-            ["Base URL", openAIBase],
-            ["Chat completions", openAIChat],
-            ["Models", openAIModels]
+            ["Base URL", openAIBase || status],
+            ["Chat completions", openAIChat || status],
+            ["Models", openAIModels || status]
           ]}
         />
         <EndpointGroup
           title="Anthropic-compatible"
           rows={[
-            ["Base URL", anthropicBase],
-            ["Messages", anthropicMessages]
+            ["Base URL", anthropicBase || status],
+            ["Messages", anthropicMessages || status]
           ]}
         />
       </div>
@@ -218,9 +219,10 @@ function EndpointGroup({ title, rows }: { title: string; rows: Array<[string, st
 
 function EndpointRow({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
+  const canCopy = value.startsWith("http://") || value.startsWith("https://");
 
   async function copy() {
-    if (!value || value === "Loading") {
+    if (!canCopy) {
       return;
     }
     await navigator.clipboard.writeText(value);
@@ -232,7 +234,7 @@ function EndpointRow({ label, value }: { label: string; value: string }) {
     <div className="endpoint-row">
       <span>{label}</span>
       <code title={value}>{value}</code>
-      <Button icon={copied ? <Check size={14} /> : <Clipboard size={14} />} onClick={() => void copy()} disabled={value === "Loading"}>
+      <Button icon={copied ? <Check size={14} /> : <Clipboard size={14} />} onClick={() => void copy()} disabled={!canCopy}>
         {copied ? "Copied" : "Copy"}
       </Button>
     </div>

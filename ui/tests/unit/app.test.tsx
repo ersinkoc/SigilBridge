@@ -16,6 +16,6 @@ describe("App", () => {
       </QueryClientProvider>
     );
     expect((await screen.findAllByText("SigilBridge"))[0]).toBeInTheDocument();
-    expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Dashboard" })).toBeInTheDocument();
   });
 });

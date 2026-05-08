@@ -73,7 +73,7 @@ export function Sidebar() {
         <span className="status-dot" />
         <div>
           <strong>Local admin</strong>
-          <span>Ready for development</span>
+          <span>Private control plane</span>
         </div>
       </div>
     </aside>

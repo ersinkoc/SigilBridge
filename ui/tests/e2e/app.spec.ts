@@ -146,6 +146,11 @@ test("renders the dashboard and toggles theme", async ({ page }) => {
   await expect(page.getByRole("navigation").getByRole("link", { name: "Keys", exact: true })).toBeVisible();
   await expect(page.getByText("http://127.0.0.1:8187/v1/chat/completions")).toBeVisible();
   await expect(page.getByText("http://127.0.0.1:8187/v1/messages")).toBeVisible();
+  await page.getByRole("button", { name: "Open command palette" }).click();
+  await page.getByPlaceholder("Search screens and actions").fill("audit");
+  await page.getByRole("button", { name: /Audit Request history/ }).click();
+  await expect(page).toHaveURL(/\/admin\/ui\/audit$/);
+  await page.goto("/admin/ui/");
   await page.getByLabel("Dark").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Send" }).click();

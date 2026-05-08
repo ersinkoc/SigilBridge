@@ -201,6 +201,13 @@ test("covers key, pool, credential, audit, and login workflows", async ({ page }
   await page.getByRole("slider", { name: "Weight" }).fill("80");
   await page.getByRole("button", { name: "Save pool" }).click();
   await expect(page.getByText("Pool saved")).toBeVisible();
+  await page.goto("/admin/ui/settings/pools-raw");
+  await page.getByRole("textbox").fill("[]");
+  await page.getByRole("button", { name: "Save pools" }).click();
+  await expect(page.getByRole("dialog", { name: "Save raw pools" })).toBeVisible();
+  await expect(page.getByText("delete 1")).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Save raw pools" })).toBeHidden();
 
   await page.goto("/admin/ui/credentials/api-key/new");
   await page.getByRole("button", { name: /OpenAI/ }).click();

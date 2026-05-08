@@ -44,6 +44,7 @@ func LoadDefault() (*Table, error) {
 }
 
 func LoadFile(path string) (*Table, error) {
+	// #nosec G304 -- pricing override is an explicit local operator-supplied file path.
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read pricing %q: %w", path, err)

@@ -27,6 +27,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	// #nosec G124 -- sessionCookie sets Secure based on the current transport for local HTTP compatibility.
 	cookie := sessionCookie("", r.TLS != nil)
 	cookie.MaxAge = -1
 	http.SetCookie(w, cookie)

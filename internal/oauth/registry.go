@@ -31,6 +31,7 @@ func LoadRegistry(overridePath string) (*Registry, error) {
 		}
 	}
 	if overridePath != "" {
+		// #nosec G304 -- OAuth provider override is an explicit local operator-supplied file path.
 		if raw, err := os.ReadFile(overridePath); err == nil {
 			if err := registry.merge(raw); err != nil {
 				return nil, err

@@ -149,6 +149,7 @@ func (a Adapter) chatHeadless(ctx context.Context, req ir.Request, cfg adapter.P
 	if outputFile != "" {
 		defer os.Remove(outputFile)
 	}
+	// #nosec G204 -- command and args come from trusted local operator configuration for the CLI adapter.
 	cmd := exec.CommandContext(ctx, command, args...)
 	if cwd := adapter.RawString(cfg.Raw, "cwd"); cwd != "" {
 		cmd.Dir = cwd
@@ -164,6 +165,7 @@ func (a Adapter) chatHeadless(ctx context.Context, req ir.Request, cfg adapter.P
 	}
 	text := strings.TrimSpace(stdout.String())
 	if outputFile != "" {
+		// #nosec G304 -- outputFile is a temp file created by this adapter for CLI output capture.
 		raw, err := os.ReadFile(outputFile)
 		if err == nil && strings.TrimSpace(string(raw)) != "" {
 			text = strings.TrimSpace(string(raw))
@@ -369,7 +371,7 @@ func promptText(req ir.Request) string {
 	}
 	for _, msg := range req.Messages {
 		if msg.Role != "" {
-			b.WriteString(strings.Title(msg.Role))
+			b.WriteString(titleASCII(msg.Role))
 			b.WriteString(":\n")
 		}
 		for _, block := range msg.Content {
@@ -385,4 +387,11 @@ func promptText(req ir.Request) string {
 		out = req.ModelAlias
 	}
 	return out
+}
+
+func titleASCII(value string) string {
+	if value == "" {
+		return ""
+	}
+	return strings.ToUpper(value[:1]) + value[1:]
 }

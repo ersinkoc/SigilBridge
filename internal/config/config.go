@@ -105,6 +105,7 @@ type MetricsConfig struct {
 }
 
 func Load(path string) (*Config, error) {
+	// #nosec G304 -- configuration path is explicit local operator input.
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read config %q: %w", path, err)

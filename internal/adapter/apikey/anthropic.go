@@ -12,6 +12,7 @@ import (
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
 	"github.com/sigilbridge/sigilbridge/internal/budget"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 )
 
@@ -25,7 +26,7 @@ func NewAnthropic(baseURL string) Anthropic {
 	if baseURL == "" {
 		baseURL = "https://api.anthropic.com"
 	}
-	return Anthropic{baseURL: strings.TrimRight(baseURL, "/"), client: http.DefaultClient}
+	return Anthropic{baseURL: strings.TrimRight(baseURL, "/"), client: httpclient.Default()}
 }
 
 func (p Anthropic) WithClient(client *http.Client) Anthropic {

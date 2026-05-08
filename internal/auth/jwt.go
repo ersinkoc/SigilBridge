@@ -82,7 +82,7 @@ func (m *AdminSessionManager) Verify(token string) (string, error) {
 	if err != nil {
 		return "", ErrInvalidSession
 	}
-	if hmac.Equal(got, expected) == false {
+	if !hmac.Equal(got, expected) {
 		return "", ErrInvalidSession
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])

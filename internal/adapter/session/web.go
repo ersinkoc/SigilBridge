@@ -13,6 +13,7 @@ import (
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
 	"github.com/sigilbridge/sigilbridge/internal/budget"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 )
 
@@ -39,7 +40,7 @@ type SessionCredential struct {
 }
 
 func NewWebAdapter(id, baseURL, endpointPath, schema string, vault Vault) *WebAdapter {
-	return &WebAdapter{id: id, baseURL: strings.TrimRight(baseURL, "/"), path: endpointPath, schema: schema, vault: vault, client: http.DefaultClient, minInterval: time.Second, last: map[string]time.Time{}}
+	return &WebAdapter{id: id, baseURL: strings.TrimRight(baseURL, "/"), path: endpointPath, schema: schema, vault: vault, client: httpclient.Default(), minInterval: time.Second, last: map[string]time.Time{}}
 }
 
 func (a *WebAdapter) WithClient(client *http.Client) *WebAdapter {
@@ -171,7 +172,7 @@ func (a *WebAdapter) pace(ctx context.Context, id string) {
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	wait := a.last[id].Add(a.minInterval).Sub(time.Now())
+	wait := time.Until(a.last[id].Add(a.minInterval))
 	if wait > 0 {
 		timer := time.NewTimer(wait)
 		a.mu.Unlock()

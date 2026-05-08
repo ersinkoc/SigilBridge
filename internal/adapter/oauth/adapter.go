@@ -12,6 +12,7 @@ import (
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
 	"github.com/sigilbridge/sigilbridge/internal/budget"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 	coreoauth "github.com/sigilbridge/sigilbridge/internal/oauth"
 )
@@ -51,7 +52,7 @@ func WithTokenAccessor(tokens coreoauth.TokenAccessor) Option {
 }
 
 func New(id, oauthID, baseURL string, shape schema, opts ...Option) Provider {
-	p := Provider{id: id, oauthID: oauthID, baseURL: strings.TrimRight(baseURL, "/"), schema: shape, client: http.DefaultClient, category: "oauth", stability: adapter.Stable, now: func() time.Time { return time.Now().UTC() }, refreshSkew: 10 * time.Minute}
+	p := Provider{id: id, oauthID: oauthID, baseURL: strings.TrimRight(baseURL, "/"), schema: shape, client: httpclient.Default(), category: "oauth", stability: adapter.Stable, now: func() time.Time { return time.Now().UTC() }, refreshSkew: 10 * time.Minute}
 	for _, opt := range opts {
 		opt(&p)
 	}

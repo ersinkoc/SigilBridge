@@ -280,5 +280,6 @@ type CatalogModelDTO struct {
 }
 
 func sessionCookie(value string, secure bool) *http.Cookie {
+	// #nosec G124 -- Secure follows the active transport so local HTTP admin sessions remain usable; HttpOnly and SameSite are always strict.
 	return &http.Cookie{Name: "sigilbridge_admin", Value: value, Path: "/admin", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode}
 }

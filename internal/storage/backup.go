@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func Backup(srcPath, dstPath string) error {
@@ -26,7 +25,7 @@ func Backup(srcPath, dstPath string) error {
 	}
 	defer db.Close()
 
-	if _, err := db.Exec("VACUUM INTO " + quoteSQLString(dstPath)); err != nil {
+	if _, err := db.Exec("VACUUM INTO ?", dstPath); err != nil {
 		return fmt.Errorf("vacuum database into %q: %w", dstPath, err)
 	}
 	return nil
@@ -43,6 +42,7 @@ func Restore(srcPath, dstPath string) error {
 		return fmt.Errorf("create restore directory: %w", err)
 	}
 
+	// #nosec G304 -- restore source is an explicit local backup path supplied by the operator.
 	src, err := os.Open(srcPath)
 	if err != nil {
 		return fmt.Errorf("open backup %q: %w", srcPath, err)
@@ -50,6 +50,7 @@ func Restore(srcPath, dstPath string) error {
 	defer src.Close()
 
 	tmp := dstPath + ".restore-tmp"
+	// #nosec G304 -- restore destination is an explicit local database path supplied by the operator.
 	dst, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("create restore temp %q: %w", tmp, err)
@@ -85,10 +86,6 @@ func Restore(srcPath, dstPath string) error {
 		return fmt.Errorf("replace database %q: %w", dstPath, err)
 	}
 	return nil
-}
-
-func quoteSQLString(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
 
 func mustExec(db *sql.DB, query string, args ...any) error {

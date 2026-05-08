@@ -9,6 +9,7 @@ import (
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
 	"github.com/sigilbridge/sigilbridge/internal/budget"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 )
 
@@ -16,7 +17,7 @@ type AzureOpenAI struct {
 	client *http.Client
 }
 
-func NewAzureOpenAI() AzureOpenAI { return AzureOpenAI{client: http.DefaultClient} }
+func NewAzureOpenAI() AzureOpenAI { return AzureOpenAI{client: httpclient.Default()} }
 func (p AzureOpenAI) WithClient(client *http.Client) AzureOpenAI {
 	if client != nil {
 		p.client = client

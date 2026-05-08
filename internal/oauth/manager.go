@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 )
 
 const vaultPrefix = "vault://oauth/"
@@ -34,7 +35,7 @@ type BootstrapResult struct {
 
 func NewManager(registry *Registry, vault TokenVault, client HTTPClient) *Manager {
 	if client == nil {
-		client = http.DefaultClient
+		client = httpclient.Default()
 	}
 	return &Manager{registry: registry, vault: vault, client: client, now: func() time.Time { return time.Now().UTC() }}
 }
@@ -212,6 +213,7 @@ func (m *Manager) AccessToken(ctx context.Context, id string) (string, error) {
 }
 
 func (m *Manager) storeToken(ctx context.Context, id string, provider Provider, token Token) error {
+	// #nosec G117 -- OAuth token JSON is immediately stored through the configured TokenVault.
 	raw, err := json.Marshal(token)
 	if err != nil {
 		return err

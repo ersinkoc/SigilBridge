@@ -13,6 +13,7 @@ import (
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
 	"github.com/sigilbridge/sigilbridge/internal/budget"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 )
 
@@ -25,7 +26,7 @@ func NewOllama(baseURL string) Ollama {
 	if baseURL == "" {
 		baseURL = "http://localhost:11434"
 	}
-	return Ollama{baseURL: strings.TrimRight(baseURL, "/"), client: http.DefaultClient}
+	return Ollama{baseURL: strings.TrimRight(baseURL, "/"), client: httpclient.Default()}
 }
 
 func (p Ollama) WithClient(client *http.Client) Ollama {

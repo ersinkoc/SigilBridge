@@ -22,6 +22,7 @@ func NewHost(manifest Manifest, onCrash func(Manifest)) *Host {
 func (h *Host) Start(ctx context.Context) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	// #nosec G204 -- plugin manifests are trusted local extension configuration.
 	cmd := exec.CommandContext(ctx, h.manifest.Command, h.manifest.Args...)
 	if err := cmd.Start(); err != nil {
 		return err

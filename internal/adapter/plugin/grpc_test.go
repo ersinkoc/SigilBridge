@@ -10,6 +10,7 @@ import (
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 	pb "github.com/sigilbridge/sigilbridge/pkg/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -21,11 +22,11 @@ func TestGRPCAdapter(t *testing.T) {
 		_ = server.Serve(listener)
 	}()
 	defer server.Stop()
-	conn, err := grpc.DialContext(context.Background(), "bufnet", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
-	}), grpc.WithInsecure())
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		t.Fatalf("DialContext() error = %v", err)
+		t.Fatalf("NewClient() error = %v", err)
 	}
 	defer conn.Close()
 	provider := NewGRPCAdapter("example_plugin", pb.NewProviderPluginClient(conn))

@@ -14,6 +14,7 @@ import (
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
 	"github.com/sigilbridge/sigilbridge/internal/budget"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 )
 
@@ -22,7 +23,7 @@ type Bedrock struct {
 	now    func() time.Time
 }
 
-func NewBedrock() Bedrock { return Bedrock{client: http.DefaultClient, now: time.Now} }
+func NewBedrock() Bedrock { return Bedrock{client: httpclient.Default(), now: time.Now} }
 func (p Bedrock) WithClient(client *http.Client) Bedrock {
 	if client != nil {
 		p.client = client

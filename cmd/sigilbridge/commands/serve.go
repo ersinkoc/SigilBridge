@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -45,7 +46,9 @@ func ServeServers(ctx context.Context, servers ...*http.Server) error {
 	}
 	select {
 	case err := <-errCh:
-		shutdownServers(servers...)
+		if shutdownErr := shutdownServers(servers...); shutdownErr != nil {
+			return errors.Join(err, shutdownErr)
+		}
 		return err
 	case <-ctx.Done():
 		return shutdownServers(servers...)
@@ -198,19 +201,39 @@ func ServeConfig(ctx context.Context, configPath string, options ...ServeOption)
 	})
 	ingressMux := http.NewServeMux()
 	ingressMux.Handle("/", ingressServer.Handler())
-	servers := []*http.Server{{Addr: cfg.Server.Bind, Handler: ingressMux, ReadHeaderTimeout: 5 * time.Second}}
+	servers := []*http.Server{configuredHTTPServer(cfg.Server.Bind, ingressMux, cfg.Server)}
 	if cfg.Admin.UIEnabled {
 		if sameBind(cfg.Server.Bind, cfg.Admin.Bind) {
 			mountAdmin(ingressMux, adminServer.Handler(), false)
 		} else {
 			adminMux := http.NewServeMux()
 			mountAdmin(adminMux, adminServer.Handler(), true)
-			servers = append(servers, &http.Server{Addr: cfg.Admin.Bind, Handler: adminMux, ReadHeaderTimeout: 5 * time.Second})
+			servers = append(servers, configuredHTTPServer(cfg.Admin.Bind, adminMux, cfg.Server))
 		}
 	}
 	startReloadLoop(ctx, os.Stderr, adminRuntime, opts.reload)
 	printServeURLs(os.Stderr, cfg.Server.Bind, cfg.Admin.Bind, cfg.Admin.UIEnabled)
 	return ServeServers(ctx, servers...)
+}
+
+func configuredHTTPServer(addr string, handler http.Handler, cfg config.ServerConfig) *http.Server {
+	requestTimeout := time.Duration(cfg.RequestTimeoutSeconds) * time.Second
+	if requestTimeout <= 0 {
+		requestTimeout = 600 * time.Second
+	}
+	idleTimeout := time.Duration(cfg.IdleTimeoutSeconds) * time.Second
+	if idleTimeout <= 0 {
+		idleTimeout = 120 * time.Second
+	}
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       requestTimeout,
+		WriteTimeout:      requestTimeout,
+		IdleTimeout:       idleTimeout,
+		MaxHeaderBytes:    1 << 20,
+	}
 }
 
 func startReloadLoop(ctx context.Context, out *os.File, rt *adminRuntime, reload <-chan struct{}) {

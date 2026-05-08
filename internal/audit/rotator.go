@@ -62,12 +62,14 @@ func dateOnly(t time.Time) time.Time {
 }
 
 func gzipFile(path string) error {
+	// #nosec G304 -- path comes from RotateAndPrune after filtering files within the configured audit directory.
 	in, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("open audit file for gzip: %w", err)
 	}
 
 	outPath := path + ".gz"
+	// #nosec G304 -- output path is derived from the filtered audit file path.
 	out, err := os.OpenFile(outPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		_ = in.Close()

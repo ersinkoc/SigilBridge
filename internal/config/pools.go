@@ -72,6 +72,7 @@ func (p *Pools) UnmarshalYAML(node *yaml.Node) error {
 }
 
 func LoadPools(path, masterKeyEnv string) (*PoolsFile, error) {
+	// #nosec G304 -- pools path is explicit local operator input.
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read pools %q: %w", path, err)

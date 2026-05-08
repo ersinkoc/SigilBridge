@@ -28,6 +28,7 @@ import (
 	"github.com/sigilbridge/sigilbridge/internal/auth"
 	"github.com/sigilbridge/sigilbridge/internal/config"
 	"github.com/sigilbridge/sigilbridge/internal/events"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 	"github.com/sigilbridge/sigilbridge/internal/oauth"
 	"github.com/sigilbridge/sigilbridge/internal/router"
@@ -862,6 +863,7 @@ func (s adminCredentialService) OAuthRevoke(ctx context.Context, id string) (map
 
 func (s adminCredentialService) OAuthProvidersRaw(context.Context) (map[string]any, error) {
 	providersPath := config.ResolveRelative(s.rt.configPath, s.rt.cfg.OAuth.ProvidersFile)
+	// #nosec G304 -- OAuth providers path is resolved from trusted local configuration.
 	raw, err := os.ReadFile(providersPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -1073,7 +1075,7 @@ func (s adminCredentialService) upsertUpstream(poolName string, upstream config.
 				upstream.Priority = len(s.rt.pools.Pools[i].Upstreams) + 1
 				s.rt.pools.Pools[i].Upstreams = append(s.rt.pools.Pools[i].Upstreams, upstream)
 			}
-			return adminPoolService{rt: s.rt}.persist()
+			return adminPoolService(s).persist()
 		}
 	}
 	s.rt.pools.Pools = append(s.rt.pools.Pools, config.Pool{
@@ -1081,7 +1083,7 @@ func (s adminCredentialService) upsertUpstream(poolName string, upstream config.
 		Strategy:  "priority_first",
 		Upstreams: []config.Upstream{upstream},
 	})
-	return adminPoolService{rt: s.rt}.persist()
+	return adminPoolService(s).persist()
 }
 
 func (s adminCredentialService) catalog(ctx context.Context) map[string]any {
@@ -1647,6 +1649,7 @@ func oauthProviderTemplates() map[string]oauth.Provider {
 			ID:          "claude_oauth",
 			DisplayName: "Claude",
 		},
+		// #nosec G101 -- public OAuth endpoint metadata, not hardcoded credentials.
 		"copilot_oauth": {
 			ID:            "copilot_oauth",
 			DisplayName:   "GitHub Copilot",
@@ -1659,6 +1662,7 @@ func oauthProviderTemplates() map[string]oauth.Provider {
 			ID:          "cursor_oauth",
 			DisplayName: "Cursor",
 		},
+		// #nosec G101 -- public OAuth endpoint metadata, not hardcoded credentials.
 		"gemini_oauth": {
 			ID:            "gemini_oauth",
 			DisplayName:   "Google Gemini",
@@ -1771,7 +1775,7 @@ func fetchModelsDev(ctx context.Context) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpclient.Default().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -1900,8 +1904,4 @@ func stringsFromAny(values []any) []string {
 		}
 	}
 	return out
-}
-
-func isNotFound(err error) bool {
-	return errors.Is(err, sql.ErrNoRows)
 }

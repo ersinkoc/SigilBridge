@@ -27,6 +27,7 @@ func StartChromeBootstrap(ctx context.Context, cfg ChromeBootstrapConfig) (*exec
 	if cfg.ChromePath == "" {
 		return nil, fmt.Errorf("chrome path is required")
 	}
+	// #nosec G204 -- ChromePath is an explicit local admin/browser bootstrap setting, not remote input.
 	cmd := exec.CommandContext(ctx, cfg.ChromePath, ChromeArgs(cfg)...)
 	if err := cmd.Start(); err != nil {
 		return nil, err

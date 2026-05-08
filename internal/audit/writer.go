@@ -115,7 +115,9 @@ func (w *Writer) run() {
 			continue
 		}
 		if w.indexer != nil {
-			w.indexer.Enqueue(context.Background(), indexed)
+			if err := w.indexer.Enqueue(context.Background(), indexed); err != nil {
+				w.setErr(fmt.Errorf("enqueue audit index %q: %w", indexed.Record.RequestID, err))
+			}
 		}
 	}
 }

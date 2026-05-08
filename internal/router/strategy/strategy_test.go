@@ -1,7 +1,6 @@
 package strategy
 
 import (
-	"math/rand"
 	"testing"
 )
 
@@ -26,11 +25,11 @@ func TestStrategies(t *testing.T) {
 	if first.ID != "a" || second.ID != "b" {
 		t.Fatalf("round robin = %s, %s", first.ID, second.ID)
 	}
-	weighted := Weighted{Rand: rand.New(rand.NewSource(1))}
+	weighted := Weighted{Intn: func(int) (int, error) { return 0, nil }}
 	if got, err := weighted.Select(candidates); err != nil || got.ID == "" {
 		t.Fatalf("weighted got=%#v err=%v", got, err)
 	}
-	random := Random{Rand: rand.New(rand.NewSource(2))}
+	random := Random{Intn: func(int) (int, error) { return 1, nil }}
 	if got, err := random.Select(candidates); err != nil || got.ID == "" {
 		t.Fatalf("random got=%#v err=%v", got, err)
 	}

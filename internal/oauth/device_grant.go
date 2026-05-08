@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 )
 
 type DeviceAuthorization struct {
@@ -25,7 +27,7 @@ func StartDeviceAuthorization(ctx context.Context, client HTTPClient, provider P
 		return DeviceAuthorization{}, fmt.Errorf("provider %q has no device authorization endpoint", provider.ID)
 	}
 	if client == nil {
-		client = http.DefaultClient
+		client = httpclient.Default()
 	}
 	form := url.Values{"client_id": {provider.ClientID}}
 	if len(scopes) == 0 {
@@ -73,7 +75,7 @@ func StartDeviceAuthorization(ctx context.Context, client HTTPClient, provider P
 
 func PollDeviceAuthorization(ctx context.Context, client HTTPClient, provider Provider, auth DeviceAuthorization) (Token, error) {
 	if client == nil {
-		client = http.DefaultClient
+		client = httpclient.Default()
 	}
 	interval := time.Duration(auth.Interval) * time.Second
 	if interval <= 0 {

@@ -48,6 +48,7 @@ func run() error {
 		}
 	}
 	output := strings.TrimRight(buf.String(), "\n") + "\n"
+	// #nosec G306 -- generated TypeScript source is not secret material and should be readable in the repo.
 	return os.WriteFile(dst, []byte(output), 0o644)
 }
 

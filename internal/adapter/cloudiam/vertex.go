@@ -19,6 +19,7 @@ import (
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
 	"github.com/sigilbridge/sigilbridge/internal/budget"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 )
 
@@ -27,7 +28,7 @@ type VertexAI struct {
 	now    func() time.Time
 }
 
-func NewVertexAI() VertexAI { return VertexAI{client: http.DefaultClient, now: time.Now} }
+func NewVertexAI() VertexAI { return VertexAI{client: httpclient.Default(), now: time.Now} }
 func (p VertexAI) WithClient(client *http.Client) VertexAI {
 	if client != nil {
 		p.client = client

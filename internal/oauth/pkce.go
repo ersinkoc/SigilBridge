@@ -78,7 +78,7 @@ func StartCallbackServer(ctx context.Context, expectedState string) (*CallbackSe
 	}()
 	go func() {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
 		defer cancel()
 		_ = server.Shutdown(shutdownCtx)
 	}()
@@ -88,7 +88,9 @@ func StartCallbackServer(ctx context.Context, expectedState string) (*CallbackSe
 func (s *CallbackServer) Wait(ctx context.Context) (CallbackResult, error) {
 	select {
 	case result := <-s.results:
-		_ = s.server.Shutdown(context.Background())
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+		defer cancel()
+		_ = s.server.Shutdown(shutdownCtx)
 		if result.Error != "" {
 			return result, &OAuthError{Code: result.Error}
 		}
@@ -102,16 +104,23 @@ func (s *CallbackServer) Wait(ctx context.Context) (CallbackResult, error) {
 }
 
 func OpenBrowser(rawURL string) error {
-	if _, err := url.ParseRequestURI(rawURL); err != nil {
+	parsed, err := url.ParseRequestURI(rawURL)
+	if err != nil {
 		return err
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("browser URL must use http or https")
 	}
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
+		// #nosec G204 -- rawURL is validated as an http(s) URL and passed as a single argument without a shell.
 		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", rawURL)
 	case "darwin":
+		// #nosec G204 -- rawURL is validated as an http(s) URL and passed as a single argument without a shell.
 		cmd = exec.Command("open", rawURL)
 	default:
+		// #nosec G204 -- rawURL is validated as an http(s) URL and passed as a single argument without a shell.
 		cmd = exec.Command("xdg-open", rawURL)
 	}
 	return cmd.Start()

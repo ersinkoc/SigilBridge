@@ -25,6 +25,7 @@ type AdminTokenStore struct {
 }
 
 func LoadAdminTokens(path string) (*AdminTokenStore, error) {
+	// #nosec G304 -- admin token file path is explicit local operator input.
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read admin tokens %q: %w", path, err)

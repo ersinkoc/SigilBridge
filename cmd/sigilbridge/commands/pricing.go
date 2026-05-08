@@ -70,6 +70,7 @@ func readPricingSource(source string) ([]byte, error) {
 		}
 		return raw, nil
 	}
+	// #nosec G304 -- pricing source path is explicit local operator input.
 	raw, err := os.ReadFile(source)
 	if err != nil {
 		return nil, fmt.Errorf("read pricing source %q: %w", source, err)

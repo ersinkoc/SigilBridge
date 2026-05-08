@@ -37,6 +37,7 @@ func StartProcess(ctx context.Context, id string, cfg ProcessConfig) (*Process, 
 	if cfg.Command == "" {
 		return nil, fmt.Errorf("cli command is required")
 	}
+	// #nosec G204 -- the ACP process command is trusted local operator configuration.
 	cmd := exec.CommandContext(ctx, cfg.Command, cfg.Args...)
 	cmd.Env = append(cmd.Environ(), cfg.Env...)
 	stdin, err := cmd.StdinPipe()

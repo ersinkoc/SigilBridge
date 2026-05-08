@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 )
 
 type ExchangeRequest struct {
@@ -63,7 +65,7 @@ func RevokeToken(ctx context.Context, client HTTPClient, revokeURL, clientID, to
 
 func tokenPost(ctx context.Context, client HTTPClient, tokenURL string, form url.Values) (Token, error) {
 	if client == nil {
-		client = http.DefaultClient
+		client = httpclient.Default()
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
 	"github.com/sigilbridge/sigilbridge/internal/budget"
+	"github.com/sigilbridge/sigilbridge/internal/httpclient"
 	"github.com/sigilbridge/sigilbridge/internal/ir"
 )
 
@@ -35,7 +36,7 @@ func NewOpenAI(id, baseURL string) OpenAI {
 	if baseURL == "" {
 		baseURL = "https://api.openai.com"
 	}
-	return OpenAI{id: id, baseURL: strings.TrimRight(baseURL, "/"), client: http.DefaultClient, category: adapter.CategoryAPIKey}
+	return OpenAI{id: id, baseURL: strings.TrimRight(baseURL, "/"), client: httpclient.Default(), category: adapter.CategoryAPIKey}
 }
 
 func (p OpenAI) WithClient(client *http.Client) OpenAI {

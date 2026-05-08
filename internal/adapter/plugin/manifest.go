@@ -19,6 +19,7 @@ type Manifest struct {
 }
 
 func LoadManifest(path string) (Manifest, error) {
+	// #nosec G304 -- plugin manifest path is explicit local operator configuration.
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return Manifest{}, err

@@ -1,10 +1,10 @@
 package strategy
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
-	"sync/atomic"
-	"time"
+	"math/big"
+	"sync"
 )
 
 type Candidate struct {
@@ -57,7 +57,7 @@ func (Priority) Select(candidates []Candidate) (Candidate, error) {
 }
 
 type Weighted struct {
-	Rand *rand.Rand
+	Intn func(int) (int, error)
 }
 
 func (s Weighted) Select(candidates []Candidate) (Candidate, error) {
@@ -69,9 +69,12 @@ func (s Weighted) Select(candidates []Candidate) (Candidate, error) {
 	for _, c := range candidates {
 		total += c.Weight
 	}
-	rnd := rand.Intn(total)
-	if s.Rand != nil {
-		rnd = s.Rand.Intn(total)
+	rnd, err := cryptoIntn(total)
+	if s.Intn != nil {
+		rnd, err = s.Intn(total)
+	}
+	if err != nil {
+		return Candidate{}, err
 	}
 	for _, c := range candidates {
 		if rnd < c.Weight {
@@ -83,7 +86,8 @@ func (s Weighted) Select(candidates []Candidate) (Candidate, error) {
 }
 
 type RoundRobin struct {
-	next atomic.Uint64
+	mu   sync.Mutex
+	next int
 }
 
 func (s *RoundRobin) Select(candidates []Candidate) (Candidate, error) {
@@ -91,12 +95,15 @@ func (s *RoundRobin) Select(candidates []Candidate) (Candidate, error) {
 	if _, err := noCandidate(candidates); err != nil {
 		return Candidate{}, err
 	}
-	idx := int(s.next.Add(1)-1) % len(candidates)
+	s.mu.Lock()
+	idx := s.next % len(candidates)
+	s.next = (s.next + 1) % len(candidates)
+	s.mu.Unlock()
 	return candidates[idx], nil
 }
 
 type Random struct {
-	Rand *rand.Rand
+	Intn func(int) (int, error)
 }
 
 func (s Random) Select(candidates []Candidate) (Candidate, error) {
@@ -104,10 +111,14 @@ func (s Random) Select(candidates []Candidate) (Candidate, error) {
 	if _, err := noCandidate(candidates); err != nil {
 		return Candidate{}, err
 	}
-	if s.Rand != nil {
-		return candidates[s.Rand.Intn(len(candidates))], nil
+	idx, err := cryptoIntn(len(candidates))
+	if s.Intn != nil {
+		idx, err = s.Intn(len(candidates))
 	}
-	return candidates[rand.Intn(len(candidates))], nil
+	if err != nil {
+		return Candidate{}, err
+	}
+	return candidates[idx], nil
 }
 
 type LeastInFlight struct{}
@@ -155,11 +166,11 @@ func (FirstAvailable) Select(candidates []Candidate) (Candidate, error) {
 func New(name string) Selector {
 	switch name {
 	case "weighted", "weighted_random":
-		return Weighted{Rand: rand.New(rand.NewSource(time.Now().UnixNano()))}
+		return Weighted{}
 	case "round_robin", "weighted_round_robin":
 		return &RoundRobin{}
 	case "random":
-		return Random{Rand: rand.New(rand.NewSource(time.Now().UnixNano()))}
+		return Random{}
 	case "least_inflight", "least_used":
 		return LeastInFlight{}
 	case "lowest_latency":
@@ -171,4 +182,15 @@ func New(name string) Selector {
 	default:
 		return Priority{}
 	}
+}
+
+func cryptoIntn(max int) (int, error) {
+	if max <= 0 {
+		return 0, fmt.Errorf("random upper bound must be positive")
+	}
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		return 0, fmt.Errorf("secure random selection: %w", err)
+	}
+	return int(n.Int64()), nil
 }

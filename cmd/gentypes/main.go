@@ -47,7 +47,8 @@ func run() error {
 			writeStruct(&buf, ts.Name.Name, st)
 		}
 	}
-	return os.WriteFile(dst, buf.Bytes(), 0o644)
+	output := strings.TrimRight(buf.String(), "\n") + "\n"
+	return os.WriteFile(dst, []byte(output), 0o644)
 }
 
 func writeStruct(buf *bytes.Buffer, name string, st *ast.StructType) {

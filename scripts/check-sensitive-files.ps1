@@ -12,7 +12,11 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 
 $visiblePaths = @(
   git ls-files --cached --others --exclude-standard
-) | Where-Object { $_ -and -not $_.StartsWith("dist/") -and -not $_.StartsWith("artifacts/") }
+) | ForEach-Object {
+  ($_ -replace "\\", "/").Trim()
+} | Where-Object {
+  $_ -and -not $_.StartsWith("dist/") -and -not $_.StartsWith("artifacts/")
+}
 
 $forbiddenPathPatterns = @(
   "^(config|pools|oauth_providers|admin_tokens)\.ya?ml$",
@@ -25,7 +29,7 @@ $forbiddenPathPatterns = @(
 
 $pathFindings = New-Object System.Collections.Generic.List[string]
 foreach ($path in $visiblePaths) {
-  $normalized = $path -replace "\\", "/"
+  $normalized = $path
   foreach ($pattern in $forbiddenPathPatterns) {
     if ($normalized -match $pattern) {
       $pathFindings.Add($normalized)
@@ -46,18 +50,22 @@ $secretPatterns = @(
 
 $contentFindings = New-Object System.Collections.Generic.List[string]
 foreach ($path in $visiblePaths) {
-  $fullPath = Join-Path $Root $path
+  $normalized = $path
+  $fullPath = Join-Path $Root $normalized
   if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
     continue
   }
-  $item = Get-Item -LiteralPath $fullPath
+  $item = Get-Item -LiteralPath $fullPath -ErrorAction SilentlyContinue
+  if (-not $item) {
+    continue
+  }
   if ($item.Length -gt 2MB) {
     continue
   }
   foreach ($candidate in $secretPatterns) {
     $matches = Select-String -LiteralPath $fullPath -Pattern $candidate.Pattern -AllMatches -ErrorAction SilentlyContinue
     foreach ($match in $matches) {
-      $contentFindings.Add("${path}:$($match.LineNumber): $($candidate.Name)")
+      $contentFindings.Add("${normalized}:$($match.LineNumber): $($candidate.Name)")
     }
   }
 }

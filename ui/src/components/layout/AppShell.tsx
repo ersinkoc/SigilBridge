@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router-dom";
 
 import { ErrorBoundary } from "../common/ErrorBoundary";
-import { connectEvents, invalidateForEvent } from "../../lib/sse";
+import { connectEvents, invalidateForEvent, markEventsDisconnected } from "../../lib/sse";
 import { Button } from "../ui/Button";
 import { CommandPalette } from "./CommandPalette";
 import { Header } from "./Header";
@@ -21,7 +21,10 @@ export function AppShell() {
       return;
     }
     const source = connectEvents("/admin/v1/events/stream", (event) => invalidateForEvent(queryClient, event));
-    return () => source.close();
+    return () => {
+      source.close();
+      markEventsDisconnected();
+    };
   }, [queryClient]);
 
   useEffect(() => {

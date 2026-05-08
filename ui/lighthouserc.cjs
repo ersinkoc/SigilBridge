@@ -16,6 +16,7 @@ module.exports = {
       url: [`http://127.0.0.1:${lhciPort}/admin/ui/`],
       numberOfRuns: 1,
       settings: {
+        preset: "desktop",
         chromeFlags: `--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --user-data-dir=${chromeUserDataDir}`
       }
     },

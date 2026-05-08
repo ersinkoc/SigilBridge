@@ -15,6 +15,7 @@ export function KeysDetailRoute() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [revokeOpen, setRevokeOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const key = useQuery({ queryKey: ["keys", id], queryFn: () => api<KeyDTO>(`/admin/v1/keys/${id}`), enabled: Boolean(id) });
   const [form, setForm] = useState({
@@ -49,6 +50,7 @@ export function KeysDetailRoute() {
     onSuccess: (updated) => {
       queryClient.setQueryData(["keys", id], updated);
       void queryClient.invalidateQueries({ queryKey: ["keys"] });
+      setRevokeOpen(false);
       toast.success(updated.revoked_at ? "Key revoked" : "Key restored");
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Key update failed")
@@ -184,7 +186,7 @@ export function KeysDetailRoute() {
                 Restore
               </Button>
             ) : (
-              <Button icon={<Ban size={16} />} onClick={() => patchKey.mutate(true)} disabled={patchKey.isPending}>
+              <Button icon={<Ban size={16} />} variant="danger" onClick={() => setRevokeOpen(true)} disabled={patchKey.isPending}>
                 Revoke
               </Button>
             )}
@@ -195,6 +197,15 @@ export function KeysDetailRoute() {
           <Card className="code-panel">
             <pre>{JSON.stringify(key.data, null, 2)}</pre>
           </Card>
+          <ConfirmDialog
+            open={revokeOpen}
+            title="Revoke bridge key"
+            description={`Revoke ${key.data?.name || key.data?.id || "this key"}? Clients using this key will fail authentication immediately, but the key record and audit trail remain available.`}
+            confirmLabel="Revoke key"
+            busy={patchKey.isPending}
+            onCancel={() => setRevokeOpen(false)}
+            onConfirm={() => patchKey.mutate(true)}
+          />
           <ConfirmDialog
             open={deleteOpen}
             title="Delete bridge key"

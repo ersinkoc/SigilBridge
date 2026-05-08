@@ -185,6 +185,10 @@ test("covers key, pool, credential, audit, and login workflows", async ({ page }
   await page.getByLabel("Allowed pools").fill("mock-chat, fallback");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Key settings saved")).toBeVisible();
+  await page.getByRole("button", { name: "Revoke" }).click();
+  await expect(page.getByRole("dialog", { name: "Revoke bridge key" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Revoke bridge key" })).toBeHidden();
   await page.getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("dialog", { name: "Delete bridge key" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();

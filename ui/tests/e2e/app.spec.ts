@@ -127,6 +127,13 @@ async function mockAdminAPI(page: Page) {
   await page.route("**/admin/v1/credentials/cli", (route) =>
     route.fulfill({ json: { enabled: true, agents: cliEnabled ? [{ provider: "codex_cli", command: "codex", pool: "codex", upstream: "codex_cli-local", available: true }] : [] } })
   );
+  await page.route("**/admin/v1/credentials/oauth/providers", async (route) => {
+    if (route.request().method() === "PUT") {
+      await route.fulfill({ json: { ok: true } });
+      return;
+    }
+    await route.fulfill({ json: { path: "oauth_providers.yaml", body: "providers: []\n" } });
+  });
   await page.route("**/admin/v1/health", (route) => route.fulfill({ json: { upstreams: [], cooldowns: [] } }));
   await page.route("**/admin/v1/audit**", (route) =>
     route.fulfill({ json: { items: [{ request_id: "req_1", status: "ok", pool_name: "mock-chat", cost_cents: 0 }], next_cursor: "" } })
@@ -208,6 +215,13 @@ test("covers key, pool, credential, audit, and login workflows", async ({ page }
   await expect(page.getByText("delete 1")).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByRole("dialog", { name: "Save raw pools" })).toBeHidden();
+  await page.goto("/admin/ui/settings/oauth-providers");
+  await page.getByText("Advanced YAML editor").click();
+  await page.getByRole("textbox").fill("providers: []\n");
+  await page.getByRole("button", { name: "Save YAML" }).click();
+  await expect(page.getByRole("dialog", { name: "Save OAuth YAML" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Save OAuth YAML" })).toBeHidden();
 
   await page.goto("/admin/ui/credentials/api-key/new");
   await page.getByRole("button", { name: /OpenAI/ }).click();

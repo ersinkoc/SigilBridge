@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { ErrorState, Skeleton } from "../components/common/State";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -27,6 +28,7 @@ export function SettingsOAuthProvidersRoute() {
   const rawProviders = useQuery({ queryKey: ["oauth-providers-raw"], queryFn: () => api<{ path?: string; body: string }>("/admin/v1/credentials/oauth/providers") });
   const [raw, setRaw] = useState("");
   const [drafts, setDrafts] = useState<EditableProvider[]>([]);
+  const [pendingSave, setPendingSave] = useState<{ body: string; source: "form" | "yaml" } | null>(null);
   const providers = credentials.data?.oauth_providers ?? [];
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export function SettingsOAuthProvidersRoute() {
       }),
     onSuccess: (_result, body) => {
       setRaw(body);
+      setPendingSave(null);
       toast.success("OAuth provider metadata saved");
       void queryClient.invalidateQueries({ queryKey: ["credentials"] });
       void queryClient.invalidateQueries({ queryKey: ["oauth-providers-raw"] });
@@ -56,12 +59,12 @@ export function SettingsOAuthProvidersRoute() {
 
   function submitStructured(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    save.mutate(providersToYAML(drafts));
+    setPendingSave({ body: providersToYAML(drafts), source: "form" });
   }
 
   function submitRaw(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    save.mutate(raw);
+    setPendingSave({ body: raw, source: "yaml" });
   }
 
   function updateDraft(id: string, patch: Partial<EditableProvider>) {
@@ -173,6 +176,15 @@ export function SettingsOAuthProvidersRoute() {
           </form>
         </details>
       )}
+      <ConfirmDialog
+        open={Boolean(pendingSave)}
+        title={pendingSave?.source === "yaml" ? "Save OAuth YAML" : "Save OAuth providers"}
+        description={`Rewrite ${rawProviders.data?.path || "oauth_providers.yaml"}? Browser and device subscription login will use this provider metadata after reload. Invalid endpoints or client ids can break new OAuth logins.`}
+        confirmLabel="Save providers"
+        busy={save.isPending}
+        onCancel={() => setPendingSave(null)}
+        onConfirm={() => pendingSave && save.mutate(pendingSave.body)}
+      />
     </div>
   );
 }

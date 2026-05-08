@@ -1,0 +1,25 @@
+providers:
+  - id: claude_oauth
+    display_name: Claude
+
+  - id: copilot_oauth
+    display_name: GitHub Copilot
+    auth_url: https://github.com/login/oauth/authorize
+    token_url: https://github.com/login/oauth/access_token
+    device_auth_url: https://github.com/login/device/code
+    default_scopes:
+      - read:user
+
+  - id: gemini_oauth
+    display_name: Google Gemini
+    auth_url: https://accounts.google.com/o/oauth2/v2/auth
+    token_url: https://oauth2.googleapis.com/token
+    device_auth_url: https://oauth2.googleapis.com/device/code
+    revoke_url: https://oauth2.googleapis.com/revoke
+    default_scopes:
+      - openid
+      - email
+      - profile
+
+  - id: cursor_oauth
+    display_name: Cursor

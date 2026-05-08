@@ -1,0 +1,30 @@
+name: UI Types Check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  ui-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+      - name: Generate types
+        run: go run ./cmd/gentypes
+      - name: Check generated types are committed
+        run: git diff --exit-code -- ui/src/types/api.ts
+      - name: Check UI
+        working-directory: ui
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run lint

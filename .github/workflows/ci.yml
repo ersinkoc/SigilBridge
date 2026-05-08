@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} ${{ matrix.goarch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goarch: amd64
+          - os: ubuntu-latest
+            goarch: arm64
+          - os: macos-latest
+            goarch: amd64
+          - os: macos-latest
+            goarch: arm64
+          - os: windows-latest
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install UI dependencies
+        working-directory: ui
+        run: pnpm install --frozen-lockfile
+      - name: Lint Go
+        run: go vet ./...
+      - name: Test Go
+        run: go test ./...
+      - name: Test Go Race
+        if: matrix.os == 'ubuntu-latest' && matrix.goarch == 'amd64'
+        run: go test -race ./...
+      - name: Lint UI
+        working-directory: ui
+        run: pnpm run lint
+      - name: Test UI
+        working-directory: ui
+        run: pnpm run test
+      - name: Build
+        shell: bash
+        env:
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          pnpm --dir ui run build
+          go build ./cmd/sigilbridge
+      - name: Install browser for UI checks
+        if: matrix.os == 'ubuntu-latest' && matrix.goarch == 'amd64'
+        run: pnpm --dir ui exec playwright install --with-deps chromium
+      - name: Run UI E2E
+        if: matrix.os == 'ubuntu-latest' && matrix.goarch == 'amd64'
+        working-directory: ui
+        run: pnpm run test:e2e
+      - name: Run Lighthouse CI
+        if: matrix.os == 'ubuntu-latest' && matrix.goarch == 'amd64'
+        working-directory: ui
+        run: pnpm run lhci

@@ -1,0 +1,103 @@
+pools:
+  - name: mock
+    description: Deterministic local test pool.
+    strategy: priority_first
+    upstreams:
+      - id: mock-primary
+        provider: mock
+        priority: 1
+        weight: 1
+        config:
+          latency_ms: 25
+
+# Additional pool patterns are below. Uncomment only the providers you have
+# credentials, local runtimes, or plugins for.
+#
+#  - name: sonnet
+#    description: Anthropic API key with OAuth fallback pattern.
+#    strategy: priority_first
+#    cooldown:
+#      initial_seconds: 5
+#      max_seconds: 300
+#      backoff: exponential
+#    circuit_breaker:
+#      failure_threshold: 5
+#      recovery_timeout_seconds: 30
+#    retry:
+#      max_attempts: 2
+#      retryable_status_codes: [408, 409, 425, 429, 500, 502, 503, 504]
+#    upstreams:
+#      - id: claude-max-oauth
+#        provider: claude_oauth
+#        priority: 1
+#        weight: 1
+#        config:
+#          credential: vault://oauth/claude_max/personal
+#          model: claude-sonnet-4-5
+#      - id: anthropic-api
+#        provider: anthropic_api
+#        priority: 2
+#        weight: 1
+#        config:
+#          api_key: ${ANTHROPIC_API_KEY}
+#          model: claude-sonnet-4-5-20250929
+#          # Admin UI API-key setup stores encrypted keys as:
+#          # api_key_ref: vault://apikey/anthropic_api/main
+#
+#  - name: openai
+#    description: OpenAI-compatible API-key pool.
+#    strategy: weighted_round_robin
+#    upstreams:
+#      - id: openai-primary
+#        provider: openai_api
+#        priority: 1
+#        weight: 100
+#        config:
+#          api_key: ${OPENAI_API_KEY}
+#          # Or use an encrypted admin-created key:
+#          # api_key_ref: vault://apikey/openai_api/main
+#          model: gpt-4.1
+#
+#  - name: local
+#    description: Local Ollama and CLI-agent examples.
+#    strategy: priority_first
+#    upstreams:
+#      - id: ollama-local
+#        provider: ollama
+#        priority: 1
+#        weight: 1
+#        config:
+#          base_url: http://127.0.0.1:11434
+#          model: llama3.1
+#      - id: codex-cli-local
+#        provider: codex_cli
+#        priority: 2
+#        weight: 1
+#        config:
+#          executable: /usr/local/bin/codex
+#          working_directory: /srv/sigilbridge/workspaces/default
+#          idle_timeout_seconds: 600
+#
+#  - name: legacy-session
+#    description: Disabled-by-default session fallback pattern.
+#    strategy: priority_first
+#    upstreams:
+#      - id: chatgpt-web-personal
+#        provider: chatgpt_web
+#        priority: 1
+#        weight: 1
+#        config:
+#          session_ref: vault://session/chatgpt-personal
+#          model: gpt-4.1
+#          tos_acknowledged: true
+#
+#  - name: plugin-demo
+#    description: Reference plugin pool.
+#    strategy: priority_first
+#    upstreams:
+#      - id: canned-plugin
+#        provider: example_plugin
+#        priority: 1
+#        weight: 1
+#        config:
+#          response: Hello from the reference plugin

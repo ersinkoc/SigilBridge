@@ -1,0 +1,25 @@
+{
+  "app": {
+    "name": "SigilBridge",
+    "subtitle": "Birlesik kontrol paneli"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "keys": "Anahtarlar",
+    "pools": "Havuzlar",
+    "credentials": "Kimlikler",
+    "audit": "Denetim",
+    "budgets": "Butceler",
+    "health": "Saglik",
+    "events": "Olaylar",
+    "settings": "Ayarlar"
+  },
+  "auth": {
+    "token": "Admin token",
+    "login": "Giris"
+  },
+  "state": {
+    "empty": "Kayit yok",
+    "error": "Bir sorun olustu"
+  }
+}

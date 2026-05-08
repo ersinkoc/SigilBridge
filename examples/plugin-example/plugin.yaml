@@ -1,0 +1,10 @@
+id: example
+name: Example Provider Plugin
+version: 0.1.0
+protocol: grpc
+command: plugin-example
+provider_ids:
+  - example_plugin
+capabilities:
+  - chat
+  - stream

@@ -1,0 +1,57 @@
+pricing:
+  anthropic_api:
+    claude-sonnet-4-5:
+      input_per_mtok_cents: 300
+      output_per_mtok_cents: 1500
+      cache_read_per_mtok_cents: 30
+      cache_write_per_mtok_cents: 375
+    claude-haiku-4-5:
+      input_per_mtok_cents: 100
+      output_per_mtok_cents: 500
+  claude_oauth:
+    claude-sonnet-4-5:
+      input_per_mtok_cents: 300
+      output_per_mtok_cents: 1500
+      cache_read_per_mtok_cents: 30
+      cache_write_per_mtok_cents: 375
+    default:
+      input_per_mtok_cents: 0
+      output_per_mtok_cents: 0
+      subscription_metering: subscription
+  openai_api:
+    gpt-5:
+      input_per_mtok_cents: 200
+      output_per_mtok_cents: 1000
+    gpt-5-nano:
+      input_per_mtok_cents: 5
+      output_per_mtok_cents: 40
+  claude_web:
+    default:
+      input_per_mtok_cents: 0
+      output_per_mtok_cents: 0
+      subscription_metering: none
+  chatgpt_web:
+    default:
+      input_per_mtok_cents: 0
+      output_per_mtok_cents: 0
+      subscription_metering: none
+  copilot_oauth:
+    default:
+      input_per_mtok_cents: 0
+      output_per_mtok_cents: 0
+      subscription_metering: subscription
+  gemini_oauth:
+    default:
+      input_per_mtok_cents: 0
+      output_per_mtok_cents: 0
+      subscription_metering: subscription
+  cursor_oauth:
+    default:
+      input_per_mtok_cents: 0
+      output_per_mtok_cents: 0
+      subscription_metering: subscription
+  mock:
+    default:
+      input_per_mtok_cents: 0
+      output_per_mtok_cents: 0
+      subscription_metering: none

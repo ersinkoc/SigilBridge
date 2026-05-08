@@ -1,0 +1,25 @@
+{
+  "app": {
+    "name": "SigilBridge",
+    "subtitle": "Unified control plane"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "keys": "Keys",
+    "pools": "Pools",
+    "credentials": "Credentials",
+    "audit": "Audit",
+    "budgets": "Budgets",
+    "health": "Health",
+    "events": "Events",
+    "settings": "Settings"
+  },
+  "auth": {
+    "token": "Admin token",
+    "login": "Sign in"
+  },
+  "state": {
+    "empty": "No records",
+    "error": "Something went wrong"
+  }
+}

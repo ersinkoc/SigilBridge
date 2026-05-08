@@ -1,0 +1,11 @@
+Package: sigilbridge
+Version: @VERSION@
+Section: net
+Priority: optional
+Architecture: @ARCH@
+Maintainer: SigilBridge Maintainers <maintainers@sigilbridge.com>
+Depends: ca-certificates
+Homepage: https://github.com/sigilbridge/sigilbridge
+Description: Self-hosted AI gateway for model routing
+ SigilBridge exposes OpenAI-compatible and Anthropic-native endpoints with
+ bridge keys, budgets, audit logs, OAuth credentials, CLI agents, and plugins.

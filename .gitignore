@@ -1,5 +1,5 @@
-dist/
-artifacts/
+/dist/
+/artifacts/
 ui/dist/
 ui/node_modules/
 ui/.pnpm-store/
@@ -8,7 +8,7 @@ ui/.chrome-lighthouse/
 ui/.sigilbridge/
 ui/test-results/
 .lhci-tmp/
-tmp/
+/tmp/
 *.log
 *.tmp
 *.db
@@ -17,7 +17,7 @@ tmp/
 coverage.out
 *.out
 coverage
-sigilbridge
+/sigilbridge
 sigilbridge.exe
 .env
 .env.*
@@ -30,11 +30,17 @@ sigilbridge.exe
 /pools.yaml
 /admin_tokens.yaml
 /oauth_providers.yaml
-.sigilbridge/
-data/
-backup/
-audit/
+/.sigilbridge/
+/data/
+/backup/
+/audit/
 examples/admin_tokens.yaml
 examples/data/
 examples/backup/
 examples/audit/
+!internal/admin/ui/dist/
+internal/admin/ui/dist/*
+!internal/admin/ui/dist/.gitkeep
+!internal/admin/ui/dist/assets/
+internal/admin/ui/dist/assets/*
+!internal/admin/ui/dist/assets/.gitkeep

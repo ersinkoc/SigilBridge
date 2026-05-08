@@ -5,14 +5,18 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func TestHandlerServesAssetsWithProductionHeaders(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/assets/"+firstAsset(t), nil)
+	filesystem := fstest.MapFS{
+		"assets/app.js": {Data: []byte("console.log('sigilbridge');")},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/assets/app.js", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
 	resp := httptest.NewRecorder()
 
-	Handler().ServeHTTP(resp, req)
+	serveAsset(resp, req, filesystem, "assets/app.js")
 
 	if resp.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
@@ -29,9 +33,13 @@ func TestHandlerServesAssetsWithProductionHeaders(t *testing.T) {
 }
 
 func TestHandlerServesSPAFallbackWithoutImmutableCache(t *testing.T) {
+	filesystem := fstest.MapFS{
+		"index.html": {Data: []byte("<!doctype html><title>SigilBridge</title>")},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/keys/missing", nil)
 	resp := httptest.NewRecorder()
 
-	Handler().ServeHTTP(resp, httptest.NewRequest(http.MethodGet, "/keys/missing", nil))
+	serveAsset(resp, req, filesystem, "index.html")
 
 	if resp.Code != http.StatusOK || !strings.Contains(resp.Body.String(), "SigilBridge") {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
@@ -39,19 +47,4 @@ func TestHandlerServesSPAFallbackWithoutImmutableCache(t *testing.T) {
 	if got := resp.Header().Get("Cache-Control"); got != "no-cache" {
 		t.Fatalf("Cache-Control = %q", got)
 	}
-}
-
-func firstAsset(t *testing.T) string {
-	t.Helper()
-	entries, err := assets.ReadDir("dist/assets")
-	if err != nil {
-		t.Fatalf("ReadDir(dist/assets) error = %v", err)
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			return entry.Name()
-		}
-	}
-	t.Fatal("no admin UI asset found")
-	return ""
 }

@@ -42,6 +42,8 @@ if [[ -f "${ROOT_DIR}/ui/package.json" && "${SKIP_UI_BUILD:-0}" != "1" ]]; then
   rm -rf "${ROOT_DIR}/internal/admin/ui/dist"
   mkdir -p "${ROOT_DIR}/internal/admin/ui/dist"
   cp -R "${ROOT_DIR}/ui/dist/." "${ROOT_DIR}/internal/admin/ui/dist/"
+  printf '\n' > "${ROOT_DIR}/internal/admin/ui/dist/.gitkeep"
+  printf '\n' > "${ROOT_DIR}/internal/admin/ui/dist/assets/.gitkeep"
 elif [[ "${SKIP_UI_BUILD:-0}" == "1" ]]; then
   echo "skipping UI build because SKIP_UI_BUILD=1"
 fi
@@ -70,6 +72,7 @@ for target in "${targets[@]}"; do
   cp "${ROOT_DIR}/LICENSE" "${out_dir}/LICENSE"
   cp "${ROOT_DIR}/examples/config.yaml" "${out_dir}/config.example.yaml"
   cp "${ROOT_DIR}/examples/pools.yaml" "${out_dir}/pools.example.yaml"
+  cp "${ROOT_DIR}/examples/oauth_providers.yaml" "${out_dir}/oauth_providers.example.yaml"
 
   tar -C "${DIST_DIR}" -czf "${DIST_DIR}/${name}.tar.gz" "${name}"
   rm -rf "${out_dir}"

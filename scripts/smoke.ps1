@@ -65,6 +65,13 @@ $adminPort = Get-FreePort
 $adminToken = "admin_smoke"
 $env:SIGILBRIDGE_MASTER_KEY = New-MasterKey
 
+pnpm --dir ui install --frozen-lockfile
+pnpm --dir ui run build
+Remove-Item -Recurse -Force (Join-Path $Root "internal/admin/ui/dist") -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force (Join-Path $Root "internal/admin/ui/dist") | Out-Null
+Copy-Item -Recurse -Force (Join-Path $Root "ui/dist/*") (Join-Path $Root "internal/admin/ui/dist/")
+[System.IO.File]::WriteAllText((Join-Path $Root "internal/admin/ui/dist/.gitkeep"), "`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $Root "internal/admin/ui/dist/assets/.gitkeep"), "`n", [System.Text.UTF8Encoding]::new($false))
 go build -o $exe ./cmd/sigilbridge
 
 $config = @"

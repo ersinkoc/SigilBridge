@@ -21,9 +21,19 @@ From source:
 ```bash
 git clone https://github.com/sigilbridge/sigilbridge
 cd sigilbridge
-go build -o dist/sigilbridge ./cmd/sigilbridge
-./dist/sigilbridge version
+bash scripts/release.sh
+tar -xzf dist/sigilbridge_dev_linux_amd64.tar.gz -C dist
+./dist/sigilbridge_dev_linux_amd64/sigilbridge version
 ```
+
+On Windows:
+
+```powershell
+.\build.ps1 -Version dev
+.\dist\sigilbridge.exe version
+```
+
+Raw `go build ./cmd/sigilbridge` is useful for compile checks. Production binaries should use `build.ps1`, `release.ps1`, or `scripts/release.sh` so the admin UI is built and embedded first.
 
 UI development requires pnpm:
 
@@ -54,7 +64,7 @@ $env:SIGILBRIDGE_MASTER_KEY = [Convert]::ToBase64String((1..32 | ForEach-Object 
 sigilbridge init --dir .sigilbridge
 ```
 
-`init` writes `config.yaml`, `pools.yaml`, and `admin_tokens.yaml` with a local `mock` pool and a generated admin token.
+`init` writes `config.yaml`, `pools.yaml`, `oauth_providers.yaml`, and `admin_tokens.yaml` with a local `mock` pool and a generated admin token.
 
 3. Create a stored bridge key:
 
@@ -173,6 +183,8 @@ On Windows or PowerShell-first shells, use the helper scripts:
 pnpm --dir ui run test:e2e    # run admin UI browser workflow tests
 pnpm --dir ui run lhci        # run Lighthouse thresholds against /admin/ui/
 .\clean.ps1                   # remove generated artifacts and restore embed placeholder
+.\clean.ps1 -RuntimeState     # zip local state to artifacts/local-state-backups, then remove data/backup/audit
+.\scripts\check-sensitive-files.ps1 # fail if local configs, state, or secret-looking values are visible to git
 .\release.ps1 -Version v1.0.0 # build multi-arch release tarballs and checksums
 ```
 

@@ -9,7 +9,7 @@ This runbook covers day-to-day operation of a single SigilBridge instance: deplo
 1. Create a dedicated OS user.
 2. Create writable state directories, for example `/var/lib/sigilbridge` and `/var/log/sigilbridge`.
 3. Generate a 32-byte base64 master key and store it in your secrets manager.
-4. Write `config.yaml`, `pools.yaml`, and `admin_tokens.yaml`, or run `sigilbridge init --dir /etc/sigilbridge` and then edit the generated files for production.
+4. Write `config.yaml`, `pools.yaml`, `oauth_providers.yaml`, and `admin_tokens.yaml`, or run `sigilbridge init --dir /etc/sigilbridge` and then edit the generated files for production.
 5. Start SigilBridge with `SIGILBRIDGE_MASTER_KEY` set in the process environment.
 6. Verify `/healthz`, `/readyz`, and `/metrics`.
 7. Create the first bridge key through the admin UI or CLI.
@@ -124,6 +124,8 @@ curl -X POST http://127.0.0.1:8788/admin/v1/reload \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
+
+On systemd deployments, `systemctl reload sigilbridge` sends SIGHUP and runs the same hot-reload path. If the changed config includes a restart-only field, the process stays up and logs the fields that require a restart.
 
 Pool, admin token, pricing, and most operational fields are reloadable. Listener binds, storage path, and master key require restart.
 

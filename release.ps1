@@ -43,6 +43,8 @@ if (-not $SkipUIBuild) {
   }
   New-Item -ItemType Directory -Force $embedDist | Out-Null
   Copy-Item -Recurse -Force (Join-Path $Root "ui/dist/*") $embedDist
+  [System.IO.File]::WriteAllText((Join-Path $embedDist ".gitkeep"), "`n", [System.Text.UTF8Encoding]::new($false))
+  [System.IO.File]::WriteAllText((Join-Path $embedDist "assets/.gitkeep"), "`n", [System.Text.UTF8Encoding]::new($false))
 }
 
 $commit = "unknown"
@@ -97,6 +99,7 @@ try {
     Copy-Item (Join-Path $Root "LICENSE") (Join-Path $outDir "LICENSE")
     Copy-Item (Join-Path $Root "examples/config.yaml") (Join-Path $outDir "config.example.yaml")
     Copy-Item (Join-Path $Root "examples/pools.yaml") (Join-Path $outDir "pools.example.yaml")
+    Copy-Item (Join-Path $Root "examples/oauth_providers.yaml") (Join-Path $outDir "oauth_providers.example.yaml")
 
     & $tar -C $dist -czf (Join-Path $dist "$name.tar.gz") $name
     if ($LASTEXITCODE -ne 0) {

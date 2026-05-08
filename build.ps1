@@ -44,6 +44,8 @@ if (-not $SkipUI) {
   Remove-Item -Recurse -Force internal/admin/ui/dist -ErrorAction SilentlyContinue
   New-Item -ItemType Directory -Force internal/admin/ui/dist | Out-Null
   Copy-Item -Recurse -Force ui/dist/* internal/admin/ui/dist/
+  [System.IO.File]::WriteAllText((Join-Path $Root "internal/admin/ui/dist/.gitkeep"), "`n", [System.Text.UTF8Encoding]::new($false))
+  [System.IO.File]::WriteAllText((Join-Path $Root "internal/admin/ui/dist/assets/.gitkeep"), "`n", [System.Text.UTF8Encoding]::new($false))
 }
 
 New-Item -ItemType Directory -Force dist | Out-Null

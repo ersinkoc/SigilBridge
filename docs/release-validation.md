@@ -16,6 +16,8 @@ pnpm --dir ui run lhci
 .\release.ps1 -Version v0.0.0-local -SkipUIBuild
 ```
 
+Each release archive should include the binary, `README.md`, `LICENSE`, `config.example.yaml`, `pools.example.yaml`, and `oauth_providers.example.yaml`.
+
 `test:e2e` and `lhci` both build or serve `ui/dist`; run them sequentially, not in parallel with `build.ps1` or `release.ps1`.
 
 On Windows, `test.ps1 -Race` uses Docker automatically when `gcc` is not available.

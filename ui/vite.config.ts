@@ -12,7 +12,7 @@ export default defineConfig(({ command }) => ({
     proxy: {
       "/admin/v1": {
         target: process.env.VITE_SIGILBRIDGE_ADMIN_TARGET ?? process.env.VITE_SIGILBRIDGE_TARGET ?? "http://127.0.0.1:8188",
-        changeOrigin: true
+        changeOrigin: false
       },
       "/v1": {
         target: process.env.VITE_SIGILBRIDGE_TARGET ?? "http://127.0.0.1:8187",

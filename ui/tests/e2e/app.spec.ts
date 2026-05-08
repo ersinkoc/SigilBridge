@@ -206,6 +206,10 @@ test("covers key, pool, credential, audit, and login workflows", async ({ page }
   await expect(page.getByText("API key stored and route updated")).toBeVisible();
   await page.goto("/admin/ui/credentials");
   await expect(page.getByText("vault://apikey/openai_api/e2e")).toBeVisible();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("dialog", { name: "Delete API key" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Delete API key" })).toBeHidden();
 
   await page.goto("/admin/ui/credentials/sessions/new");
   await page.getByLabel("Name").fill("e2e");

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { CredentialTabs } from "../components/credentials/CredentialTabs";
@@ -12,9 +13,17 @@ import { ErrorState, Skeleton } from "../components/common/State";
 import { api } from "../lib/api";
 import type { CLIStatusDTO, CredentialsResponse } from "../types/api";
 
+type CredentialConfirmAction = {
+  kind: "delete" | "revoke";
+  id: string;
+  label: string;
+  description: string;
+};
+
 export function CredentialsRoute() {
   const queryClient = useQueryClient();
   const [probeResult, setProbeResult] = useState<Record<string, unknown> | null>(null);
+  const [confirmAction, setConfirmAction] = useState<CredentialConfirmAction | null>(null);
   const credentials = useQuery({ queryKey: ["credentials"], queryFn: () => api<CredentialsResponse>("/admin/v1/credentials") });
   const cliDetect = useQuery({ queryKey: ["credentials-cli-detect"], queryFn: () => api<CLIStatusDTO>("/admin/v1/credentials/cli/detect") });
   const apiKeys = credentials.data?.api_keys ?? [];
@@ -35,6 +44,7 @@ export function CredentialsRoute() {
     mutationFn: (id: string) => api("/admin/v1/credentials/oauth/revoke", { method: "POST", body: JSON.stringify({ id }) }),
     onSuccess: () => {
       toast.success("Credential revoked");
+      setConfirmAction(null);
       void queryClient.invalidateQueries({ queryKey: ["credentials"] });
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Revoke failed")
@@ -43,6 +53,7 @@ export function CredentialsRoute() {
     mutationFn: (id: string) => api(`/admin/v1/credentials?id=${encodeURIComponent(id)}`, { method: "DELETE" }),
     onSuccess: () => {
       toast.success("Credential deleted");
+      setConfirmAction(null);
       void queryClient.invalidateQueries({ queryKey: ["credentials"] });
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Delete failed")
@@ -57,6 +68,39 @@ export function CredentialsRoute() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Probe failed")
   });
+  const confirmBusy = revoke.isPending || remove.isPending;
+
+  function requestDelete(id: string, label: string, type: "API key" | "session") {
+    setConfirmAction({
+      kind: "delete",
+      id,
+      label: `Delete ${type}`,
+      description:
+        type === "API key"
+          ? `Delete ${label}? Pools using this vault reference will fail until another credential is attached.`
+          : `Delete ${label}? This removes the local fallback credential from the vault. Revoke first if the upstream provider should invalidate the remote session too.`
+    });
+  }
+
+  function requestRevoke(id: string, label: string) {
+    setConfirmAction({
+      kind: "revoke",
+      id,
+      label: "Revoke session credential",
+      description: `Revoke ${label}? This asks the provider to invalidate the session token and the fallback will stop working immediately.`
+    });
+  }
+
+  function confirmCredentialAction() {
+    if (!confirmAction) {
+      return;
+    }
+    if (confirmAction.kind === "revoke") {
+      revoke.mutate(confirmAction.id);
+      return;
+    }
+    remove.mutate(confirmAction.id);
+  }
 
   return (
     <div className="page">
@@ -100,7 +144,7 @@ export function CredentialsRoute() {
             <CredentialRegistry
               title="API key registry"
               rows={apiKeys}
-              remove={(id) => remove.mutate(id)}
+              remove={(id, label) => requestDelete(id, label, "API key")}
               deleting={remove.isPending}
               probePool={(pool) => probe.mutate(pool)}
               probing={probe.isPending}
@@ -111,13 +155,22 @@ export function CredentialsRoute() {
             <SessionRegistry
               rows={sessions}
               refresh={(id) => refresh.mutate(id)}
-              revoke={(id) => revoke.mutate(id)}
-              remove={(id) => remove.mutate(id)}
+              revoke={(id, label) => requestRevoke(id, label)}
+              remove={(id, label) => requestDelete(id, label, "session")}
               busy={refresh.isPending || revoke.isPending || remove.isPending}
             />
           ) : null}
         </>
       )}
+      <ConfirmDialog
+        open={Boolean(confirmAction)}
+        title={confirmAction?.label ?? "Confirm credential action"}
+        description={confirmAction?.description}
+        confirmLabel={confirmAction?.kind === "revoke" ? "Revoke credential" : "Delete credential"}
+        busy={confirmBusy}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={confirmCredentialAction}
+      />
     </div>
   );
 }
@@ -131,8 +184,8 @@ function SessionRegistry({
 }: {
   rows: CredentialsResponse["sessions"];
   refresh: (id: string) => void;
-  revoke: (id: string) => void;
-  remove: (id: string) => void;
+  revoke: (id: string, label: string) => void;
+  remove: (id: string, label: string) => void;
   busy: boolean;
 }) {
   return (
@@ -171,10 +224,10 @@ function SessionRegistry({
                   <Button icon={<RefreshCw size={14} />} onClick={() => refresh(row.id)} disabled={busy}>
                     Refresh
                   </Button>
-                  <Button icon={<XCircle size={14} />} onClick={() => revoke(row.id)} disabled={busy}>
+                  <Button icon={<XCircle size={14} />} onClick={() => revoke(row.id, credentialShortName(row.id))} disabled={busy}>
                     Revoke
                   </Button>
-                  <Button icon={<Trash2 size={14} />} onClick={() => remove(row.id)} disabled={busy}>
+                  <Button icon={<Trash2 size={14} />} variant="danger" onClick={() => remove(row.id, credentialShortName(row.id))} disabled={busy}>
                     Delete
                   </Button>
                 </div>
@@ -294,7 +347,7 @@ function CredentialRegistry({
 }: {
   title: string;
   rows: CredentialsResponse["api_keys"];
-  remove: (id: string) => void;
+  remove: (id: string, label: string) => void;
   deleting: boolean;
   probePool: (pool: string) => void;
   probing: boolean;
@@ -334,7 +387,7 @@ function CredentialRegistry({
                   <Link to="/pools">
                     <Button icon={<Route size={14} />}>Pools</Button>
                   </Link>
-                  <Button icon={<Trash2 size={14} />} onClick={() => remove(row.id)} disabled={deleting}>
+                  <Button icon={<Trash2 size={14} />} variant="danger" onClick={() => remove(row.id, shortID)} disabled={deleting}>
                     Delete
                   </Button>
                 </div>

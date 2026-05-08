@@ -111,7 +111,7 @@ export function PoolsRoute() {
                         return (
                           <span className={issues.length === 0 ? "route-chip ready" : "route-chip"} key={`${String(upstream.id ?? "upstream")}-${index}`}>
                             <strong>{String(upstream.id ?? "upstream")}</strong>
-                            <em>{String(upstream.model ?? upstream.provider ?? "unwired")}</em>
+                            <em>{upstreamModelLabel(upstream)}</em>
                           </span>
                         );
                       })
@@ -165,7 +165,7 @@ function upstreamIssues(upstream: Record<string, unknown>) {
   if (!String(upstream.provider ?? "").trim()) {
     issues.push("adapter");
   }
-  if (!String(upstream.model ?? "").trim()) {
+  if (!usesLocalModelDefault(upstream) && !String(upstream.model ?? "").trim()) {
     issues.push("model");
   }
   if (requiresCredential(upstream) && !credentialValue(upstream)) {
@@ -184,6 +184,23 @@ function requiresCredential(upstream: Record<string, unknown>) {
     return false;
   }
   return true;
+}
+
+function usesLocalModelDefault(upstream: Record<string, unknown>) {
+  const provider = String(upstream.provider ?? "").toLowerCase();
+  const category = String(upstream.category ?? "").toLowerCase();
+  return category === "cli_acp" || provider.includes("_cli") || provider.includes("cli_") || provider.includes("acp");
+}
+
+function upstreamModelLabel(upstream: Record<string, unknown>) {
+  const model = String(upstream.model ?? "").trim();
+  if (model) {
+    return model;
+  }
+  if (usesLocalModelDefault(upstream)) {
+    return "CLI default";
+  }
+  return String(upstream.provider ?? "unwired");
 }
 
 function filterPools(pools: PoolDTO[], query: string, status: string) {

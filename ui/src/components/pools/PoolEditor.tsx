@@ -60,6 +60,7 @@ export function PoolEditor({
     const first = choices.find((choice) => choice.category === "api_key") ?? choices[0];
     const next: Upstream = {
       id: first ? defaultUpstreamID(first, upstreams.length) : `upstream-${upstreams.length + 1}`,
+      catalog_id: first?.id ?? "",
       provider: first?.compatibility ?? "openai_api",
       priority: upstreams.length + 1,
       weight: 100
@@ -190,7 +191,7 @@ export function PoolEditor({
                     Endpoint
                     <Input value={String(upstream.base_url ?? "")} onChange={(event) => updateUpstream(index, { base_url: event.target.value })} placeholder="Provider endpoint" />
                   </label>
-                  <ModelField value={String(upstream.model ?? "")} models={modelOptions} onChange={(value) => updateUpstream(index, { model: value })} />
+                  <ModelField value={String(upstream.model ?? "")} models={modelOptions} optional={usesLocalModelDefault(upstream, selectedChoice)} onChange={(value) => updateUpstream(index, { model: value })} />
                   <label>
                     Credential
                     <select className="input" value={String(upstream.api_key_ref ?? upstream.credential ?? upstream.credential_id ?? "")} onChange={(event) => updateCredentialRef(index, event.target.value, updateUpstream)}>
@@ -300,10 +301,11 @@ function RoutePreview({
   issues: string[];
   credential?: NonNullable<CredentialsResponse["api_keys"]>[number];
 }) {
+  const model = String(upstream.model ?? "").trim() || (usesLocalModelDefault(upstream, choice) ? "CLI default" : "not selected");
   const rows = [
     ["Adapter", String(upstream.provider ?? choice?.compatibility ?? "custom")],
     ["Endpoint", String(upstream.base_url ?? choice?.base_url ?? "provider default")],
-    ["Model", String(upstream.model ?? "not selected")],
+    ["Model", model],
     ["Credential", credential ? credentialShortName(credential.id) : requiresCredential(upstream, choice) ? "not selected" : "local/session auth"]
   ];
   return (
@@ -369,12 +371,15 @@ function applyCatalogChoice(index: number, choice: CatalogChoice | undefined, up
     update(index, { catalog_id: "" });
     return;
   }
+  const currentID = String(upstream.id ?? "").trim();
+  const previousProvider = String(upstream.provider ?? "").trim();
+  const generatedID = !currentID || (Boolean(previousProvider) && currentID.startsWith(`${previousProvider}-`));
   update(index, {
     catalog_id: choice.id,
     provider: choice.compatibility,
     base_url: choice.base_url ?? "",
-    model: choice.top_models?.[0]?.id ?? String(upstream.model ?? ""),
-    id: String(upstream.id ?? "").trim() || defaultUpstreamID(choice, index)
+    model: choice.top_models?.[0]?.id ?? (usesLocalModelDefault(upstream, choice) ? "" : String(upstream.model ?? "")),
+    id: generatedID ? defaultUpstreamID(choice, index) : currentID
   });
 }
 
@@ -397,13 +402,14 @@ function defaultUpstreamID(choice: CatalogChoice, index: number) {
   return `${choice.compatibility}-${choice.id}`.replace(/[^a-zA-Z0-9_-]+/g, "-").toLowerCase() || `upstream-${index + 1}`;
 }
 
-function ModelField({ value, models, onChange }: { value: string; models: CatalogModelDTO[]; onChange: (value: string) => void }) {
+function ModelField({ value, models, optional = false, onChange }: { value: string; models: CatalogModelDTO[]; optional?: boolean; onChange: (value: string) => void }) {
   const [query, setQuery] = useState("");
   if (models.length === 0) {
     return (
       <label>
         Model
-        <Input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Model id" />
+        <Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={optional ? "Optional model override" : "Model id"} />
+        {optional ? <span className="field-help">Leave blank to use the CLI agent's configured default model.</span> : null}
       </label>
     );
   }
@@ -469,7 +475,7 @@ function upstreamIssues(upstream: Upstream, choice: CatalogChoice | undefined, c
   if (!String(upstream.provider ?? "").trim()) {
     issues.push("adapter");
   }
-  if (!String(upstream.model ?? "").trim()) {
+  if (!usesLocalModelDefault(upstream, choice) && !String(upstream.model ?? "").trim()) {
     issues.push("model");
   }
   if (requiresCredential(upstream, choice) && !credentialValue(upstream)) {
@@ -496,4 +502,10 @@ function requiresCredential(upstream: Upstream, choice?: CatalogChoice) {
     return false;
   }
   return true;
+}
+
+function usesLocalModelDefault(upstream: Upstream, choice?: CatalogChoice) {
+  const provider = String(upstream.provider ?? choice?.compatibility ?? "").toLowerCase();
+  const category = String(choice?.category ?? upstream.category ?? "").toLowerCase();
+  return category === "cli_acp" || provider.includes("_cli") || provider.includes("cli_") || provider.includes("acp");
 }

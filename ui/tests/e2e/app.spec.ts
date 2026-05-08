@@ -208,6 +208,20 @@ test("covers key, pool, credential, audit, and login workflows", async ({ page }
   await page.getByRole("slider", { name: "Weight" }).fill("80");
   await page.getByRole("button", { name: "Save pool" }).click();
   await expect(page.getByText("Pool saved")).toBeVisible();
+
+  await page.goto("/admin/ui/pools/cli-pool");
+  await page.getByLabel("Pool alias").fill("cli-pool");
+  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByLabel("Source").selectOption("cli_acp");
+  await page.getByLabel("Provider catalog").selectOption("codex_cli");
+  await expect(page.getByText("Route ready")).toBeVisible();
+  await expect(page.getByText("CLI default")).toBeVisible();
+  await page.getByRole("button", { name: "Save pool" }).click();
+  await expect(page.getByText("Pool saved")).toBeVisible();
+  await page.goto("/admin/ui/pools");
+  await expect(page.getByText("CLI default")).toBeVisible();
+  await expect(page.locator(".pool-card-actions .status-pill.ok", { hasText: "Ready" })).toBeVisible();
+
   await page.goto("/admin/ui/settings/pools-raw");
   await page.getByRole("textbox").fill("[]");
   await page.getByRole("button", { name: "Save pools" }).click();

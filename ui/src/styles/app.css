@@ -2585,6 +2585,22 @@ textarea:focus-visible,
   border-color: var(--color-brand-strong);
 }
 
+.btn-danger {
+  color: white;
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.btn-danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 86%, black);
+  border-color: color-mix(in srgb, var(--color-danger) 86%, black);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .btn-ghost {
   background: transparent;
   border-color: transparent;
@@ -2704,9 +2720,32 @@ label.check-row {
 .modal-backdrop {
   position: fixed;
   inset: 0;
+  z-index: 60;
   display: grid;
   place-items: center;
+  padding: 18px;
   background: rgb(0 0 0 / 40%);
+}
+
+.confirm-modal {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 440px);
+  box-shadow: 0 24px 60px rgb(15 23 42 / 28%);
+}
+
+.confirm-modal h2,
+.confirm-modal p {
+  margin: 0;
+}
+
+.confirm-modal > div:first-child {
+  display: grid;
+  gap: 8px;
+}
+
+.confirm-modal p {
+  color: var(--color-muted);
 }
 
 .command-backdrop {

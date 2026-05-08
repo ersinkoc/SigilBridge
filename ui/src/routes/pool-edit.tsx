@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { PoolEditor } from "../components/pools/PoolEditor";
 import { api } from "../lib/api";
 import type { PoolDTO } from "../types/api";
@@ -11,6 +12,7 @@ export function PoolEditRoute() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [pool, setPool] = useState<PoolDTO>({ id: id ?? "new", strategy: "priority", upstreams: [] });
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const queryClient = useQueryClient();
   const pools = useQuery({ queryKey: ["pools"], queryFn: () => api<PoolDTO[]>("/admin/v1/pools"), enabled: Boolean(id && id !== "new") });
   useEffect(() => {
@@ -48,16 +50,19 @@ export function PoolEditRoute() {
         pool={pool}
         onChange={setPool}
         onSave={() => savePool.mutate()}
-        onDelete={pool.id === "new" ? undefined : () => confirmDelete(() => deletePool.mutate())}
+        onDelete={pool.id === "new" ? undefined : () => setDeleteOpen(true)}
         saving={savePool.isPending}
         deleting={deletePool.isPending}
       />
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete pool"
+        description={`Delete ${pool.id}? This removes the routing alias and its upstream order. Existing client keys will no longer be able to route through this pool.`}
+        confirmLabel="Delete pool"
+        busy={deletePool.isPending}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() => deletePool.mutate()}
+      />
     </div>
   );
-}
-
-function confirmDelete(action: () => void) {
-  if (window.confirm("Delete this pool?")) {
-    action();
-  }
 }

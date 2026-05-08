@@ -4,6 +4,7 @@ import { Ban, RotateCcw, Save, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { ErrorState, Skeleton } from "../components/common/State";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -14,6 +15,7 @@ export function KeysDetailRoute() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const key = useQuery({ queryKey: ["keys", id], queryFn: () => api<KeyDTO>(`/admin/v1/keys/${id}`), enabled: Boolean(id) });
   const [form, setForm] = useState({
     name: "",
@@ -186,13 +188,22 @@ export function KeysDetailRoute() {
                 Revoke
               </Button>
             )}
-            <Button icon={<Trash2 size={16} />} onClick={() => confirmDelete(() => deleteKey.mutate())} disabled={deleteKey.isPending}>
+            <Button icon={<Trash2 size={16} />} variant="danger" onClick={() => setDeleteOpen(true)} disabled={deleteKey.isPending}>
               Delete
             </Button>
           </div>
           <Card className="code-panel">
             <pre>{JSON.stringify(key.data, null, 2)}</pre>
           </Card>
+          <ConfirmDialog
+            open={deleteOpen}
+            title="Delete bridge key"
+            description={`Delete ${key.data?.name || key.data?.id || "this key"} permanently? Clients using this key will fail authentication immediately. Revoke is safer if you may need an audit trail before removal.`}
+            confirmLabel="Delete key"
+            busy={deleteKey.isPending}
+            onCancel={() => setDeleteOpen(false)}
+            onConfirm={() => deleteKey.mutate()}
+          />
         </>
       )}
     </div>
@@ -204,12 +215,6 @@ function formatDate(value?: string) {
     return "";
   }
   return new Date(value).toLocaleString();
-}
-
-function confirmDelete(action: () => void) {
-  if (window.confirm("Delete this bridge key?")) {
-    action();
-  }
 }
 
 function numberValue(value: unknown) {

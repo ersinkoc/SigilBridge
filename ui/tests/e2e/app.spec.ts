@@ -263,6 +263,9 @@ test("covers key, pool, credential, audit, and login workflows", async ({ page }
   await expect(page.getByText("vault://claude_web/e2e")).toBeVisible();
 
   await page.goto("/admin/ui/credentials/cli");
+  await expect(page.getByText("Resolved on PATH")).toBeVisible();
+  await expect(page.getByText("Native CLI auth must be valid for the service user.")).toBeVisible();
+  await expect(page.getByText("Enable, then probe before using this pool in production.")).toBeVisible();
   await page.getByRole("button", { name: "Enable" }).click();
   await expect(page.getByText("CLI upstream enabled")).toBeVisible();
 

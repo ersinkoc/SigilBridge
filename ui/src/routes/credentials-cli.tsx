@@ -143,7 +143,7 @@ export function CredentialsCliRoute() {
                         <Terminal size={15} />
                         <code>{agent.command} {agent.args?.join(" ")}</code>
                       </div>
-                      <span className="muted">{agent.path || agent.error || agent.auth_status || "Local command will be resolved at runtime."}</span>
+                      <AgentDiagnostics agent={agent} mode="discovered" />
                       <Button icon={<Plus size={14} />} onClick={() => enable.mutate(agent)} disabled={!agent.available || agent.configured || enable.isPending}>
                         {agent.configured ? "Enabled" : "Enable"}
                       </Button>
@@ -173,6 +173,7 @@ export function CredentialsCliRoute() {
                     <Terminal size={15} />
                     <code>{agent.command} {agent.args?.join(" ")}</code>
                   </div>
+                  <AgentDiagnostics agent={agent} mode="configured" />
                   {probeResult && probeResult.pool === agent.pool ? <AgentProbeResult result={probeResult} /> : null}
                   {agent.pool ? (
                     <Button icon={<Activity size={14} />} onClick={() => probe.mutate(String(agent.pool))} disabled={probe.isPending}>
@@ -185,6 +186,28 @@ export function CredentialsCliRoute() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function AgentDiagnostics({ agent, mode }: { agent: CLIAgentDTO; mode: "discovered" | "configured" }) {
+  const commandStatus = agent.available ? agent.path ? "Resolved on PATH" : "Resolved at runtime" : "Command missing";
+  const authStatus = agent.auth_status || (agent.available ? "Native CLI auth must be valid for the service user." : "Install the command and complete its native login.");
+  const nextStep = agent.configured ? "Probe the pool to verify non-interactive auth and routing." : agent.available ? "Enable, then probe before using this pool in production." : "Install or fix PATH, then scan again.";
+  return (
+    <div className="agent-diagnostics">
+      <div>
+        <span>Command</span>
+        <strong>{commandStatus}</strong>
+      </div>
+      <div>
+        <span>Auth</span>
+        <strong>{authStatus}</strong>
+      </div>
+      <div>
+        <span>Next</span>
+        <strong>{mode === "configured" ? nextStep : agent.error || nextStep}</strong>
+      </div>
     </div>
   );
 }

@@ -54,6 +54,25 @@ func TestAdminHandlers(t *testing.T) {
 		t.Fatalf("bearer cross-origin write status=%d body=%s", resp.Code, resp.Body.String())
 	}
 	resp = httptest.NewRecorder()
+	proxiedWrite := httptest.NewRequest(http.MethodPost, "http://127.0.0.1/admin/v1/keys", strings.NewReader(`{"prefix":"test"}`))
+	proxiedWrite.Host = "bridge.example.test"
+	proxiedWrite.Header.Set("Origin", "https://bridge.example.test")
+	proxiedWrite.Header.Set("X-Forwarded-Proto", "https")
+	proxiedWrite.AddCookie(sessionCookie)
+	server.Handler().ServeHTTP(resp, proxiedWrite)
+	if resp.Code != http.StatusCreated {
+		t.Fatalf("proxied same-origin write status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = httptest.NewRecorder()
+	missingForwardedProto := httptest.NewRequest(http.MethodPost, "http://127.0.0.1/admin/v1/keys", strings.NewReader(`{"prefix":"test"}`))
+	missingForwardedProto.Host = "bridge.example.test"
+	missingForwardedProto.Header.Set("Origin", "https://bridge.example.test")
+	missingForwardedProto.AddCookie(sessionCookie)
+	server.Handler().ServeHTTP(resp, missingForwardedProto)
+	if resp.Code != http.StatusForbidden {
+		t.Fatalf("proxied write without forwarded proto status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	resp = httptest.NewRecorder()
 	server.Handler().ServeHTTP(resp, authed(httptest.NewRequest(http.MethodGet, "/admin/v1/keys/key1", nil), sessionCookie))
 	if resp.Code != http.StatusOK || strings.Contains(resp.Body.String(), "sb_test_secret") {
 		t.Fatalf("get key status=%d body=%s", resp.Code, resp.Body.String())

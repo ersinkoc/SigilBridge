@@ -175,12 +175,12 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
 Validation:
 
-```bash
-curl -i https://bridge.example.com/admin/v1/reload \
-  -H "Authorization: Bearer <admin-token>" \
-  -H "Origin: https://bridge.example.com" \
-  -X POST
+```powershell
+$env:SIGILBRIDGE_ADMIN_TOKEN = "<admin-token>"
+.\scripts\admin-proxy-preflight.ps1 -AdminUrl "https://bridge.example.com"
 ```
+
+The preflight logs in through the public admin URL, checks admin health, then performs a cookie-authenticated same-origin write against `/admin/v1/reload`. A `403` means the proxy is not preserving the public origin correctly; check `Host`, `X-Forwarded-Proto`, and whether `/admin/ui/` and `/admin/v1/` share the same public origin.
 
 ## Plugin Install
 

@@ -101,6 +101,15 @@ For a full container smoke on a local host:
 .\scripts\docker-smoke.ps1
 ```
 
+For a deployed admin URL behind a reverse proxy:
+
+```powershell
+$env:SIGILBRIDGE_ADMIN_TOKEN = "<admin-token>"
+.\scripts\admin-proxy-preflight.ps1 -AdminUrl "https://bridge.example.com"
+```
+
+This validates browser-style cookie login and a same-origin admin write through the public URL. It should pass before announcing a proxy-backed deployment as ready.
+
 systemd:
 
 1. Create the `sigilbridge` user and group.

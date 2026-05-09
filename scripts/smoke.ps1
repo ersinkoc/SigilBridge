@@ -146,6 +146,8 @@ try {
   }
   $adminCookieHeader = ([string]$adminCookieHeader).Split(";")[0]
   $adminOriginHeaders = @{ Origin = "http://127.0.0.1:$adminPort" }
+  & (Join-Path $ScriptDir "admin-proxy-preflight.ps1") -AdminUrl "http://127.0.0.1:$adminPort" -AdminToken $adminToken -AllowHttp -Quiet
+  $adminProxyPreflight = $true
 
   $poolsResp = @(Invoke-RestMethod -WebSession $session -Uri "http://127.0.0.1:$adminPort/admin/v1/pools")
   if ($poolsResp.Count -ne 1 -or $poolsResp[0].id -ne "mock-chat") {
@@ -255,6 +257,7 @@ try {
     Admin = "http://127.0.0.1:$adminPort"
     UnauthStatus = $unauthStatus
     Pools = $poolsResp.Count
+    AdminProxyPreflight = [bool]$adminProxyPreflight
     ProxiedWrite = [bool]$proxyWriteProbe.ok
     SessionCredential = $sessionCredential.id
     CreatedKey = $created.id

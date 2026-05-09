@@ -44,3 +44,6 @@ internal/admin/ui/dist/*
 !internal/admin/ui/dist/assets/
 internal/admin/ui/dist/assets/*
 !internal/admin/ui/dist/assets/.gitkeep
+
+.dfmt/
+.claude/

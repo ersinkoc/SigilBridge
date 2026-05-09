@@ -81,10 +81,13 @@ Prerequisites:
 
 Flow:
 
-1. Configure a pool upstream with `provider: claude_code_cli` and an absolute `executable` path.
+1. Configure a pool upstream with the target CLI provider and an absolute executable path or detected command.
 2. Start `sigilbridge serve --config <config.yaml>`.
-3. Send a streaming request through `/v1/chat/completions`.
-4. Confirm streamed content, process health, stderr capture, audit record, and idle shutdown.
+3. Use the admin CLI scan to confirm the agent is available.
+4. Enable the agent and probe the pool.
+5. For `protocol: acp`, confirm the probe reaches `initialize` over newline-delimited JSON-RPC and that any configured model appears in the agent's ACP `configOptions`.
+6. Send a streaming request through `/v1/chat/completions`.
+7. Confirm streamed content, process health, stderr capture, audit record, cancellation behavior, and idle shutdown.
 
 ## Fresh-Host Deployment
 

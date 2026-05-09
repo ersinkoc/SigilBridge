@@ -77,12 +77,12 @@ func (a Adapter) chatACPOnce(ctx context.Context, req ir.Request, cfg adapter.Pr
 	if err != nil {
 		return ir.Response{}, err
 	}
-	var init corecliacp.ACPInitializeResult
-	if err := proc.Call(ctx, corecliacp.MethodInitialize, corecliacp.ACPInitializeParams{
+	init, err := proc.EnsureACPInitialized(ctx, corecliacp.ACPInitializeParams{
 		ProtocolVersion:    1,
 		ClientCapabilities: map[string]any{},
 		ClientInfo:         corecliacp.ACPImplementation{Name: "sigilbridge", Title: "SigilBridge", Version: "dev"},
-	}, &init); err != nil {
+	})
+	if err != nil {
 		return ir.Response{}, processError(a.id, proc, err)
 	}
 	if init.ProtocolVersion != 0 && init.ProtocolVersion != 1 {
@@ -106,8 +106,21 @@ func (a Adapter) chatACPOnce(ctx context.Context, req ir.Request, cfg adapter.Pr
 	if session.SessionID == "" {
 		return ir.Response{}, fmt.Errorf("%s ACP session/new returned an empty sessionId", a.id)
 	}
+	if model := adapter.RawString(cfg.Raw, "model"); model != "" {
+		if err := a.setACPModelConfig(ctx, proc, session, model); err != nil {
+			return ir.Response{}, processError(a.id, proc, err)
+		}
+	}
 	var text strings.Builder
 	var promptResult corecliacp.ACPSessionPromptResult
+	promptDone := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = proc.Notify(corecliacp.MethodSessionCancel, corecliacp.ACPSessionCancelParams{SessionID: session.SessionID})
+		case <-promptDone:
+		}
+	}()
 	err = proc.CallWithHandler(ctx, corecliacp.MethodSessionPrompt, corecliacp.ACPSessionPromptParams{
 		SessionID: session.SessionID,
 		Prompt: []corecliacp.ACPContentBlock{{
@@ -131,8 +144,15 @@ func (a Adapter) chatACPOnce(ctx context.Context, req ir.Request, cfg adapter.Pr
 		}
 		return nil
 	})
+	close(promptDone)
 	if err != nil {
 		return ir.Response{}, processError(a.id, proc, err)
+	}
+	if supportsACPSessionClose(init) {
+		var closeResult map[string]any
+		if err := proc.Call(ctx, corecliacp.MethodSessionClose, corecliacp.ACPSessionCloseParams{SessionID: session.SessionID}, &closeResult); err != nil {
+			a.pool.Drop(ctx, a.upstreamID(cfg), proc)
+		}
 	}
 	return a.responseFromText(req, text.String(), valueOr(promptResult.StopReason, ir.StopEndTurn)), nil
 }
@@ -215,6 +235,20 @@ func (a Adapter) HealthCheck(ctx context.Context, cfg adapter.ProviderConfig) er
 	if err != nil {
 		return err
 	}
+	if adapter.RawString(cfg.Raw, "protocol") == "acp" {
+		init, err := proc.EnsureACPInitialized(ctx, corecliacp.ACPInitializeParams{
+			ProtocolVersion:    1,
+			ClientCapabilities: map[string]any{},
+			ClientInfo:         corecliacp.ACPImplementation{Name: "sigilbridge", Title: "SigilBridge", Version: "dev"},
+		})
+		if err != nil {
+			return processError(a.id, proc, err)
+		}
+		if init.ProtocolVersion != 0 && init.ProtocolVersion != 1 {
+			return fmt.Errorf("%s selected unsupported ACP protocol version %d", a.id, init.ProtocolVersion)
+		}
+		return nil
+	}
 	var result corecliacp.InitializeResult
 	return processError(a.id, proc, proc.Call(ctx, corecliacp.MethodInitialize, corecliacp.InitializeParams{ClientName: "sigilbridge", ClientVersion: "dev"}, &result))
 }
@@ -237,8 +271,30 @@ func (a Adapter) process(ctx context.Context, cfg adapter.ProviderConfig) (*core
 		env = rawEnv
 	}
 	framing := adapter.RawString(cfg.Raw, "framing")
+	if framing == "" && adapter.RawString(cfg.Raw, "protocol") == "acp" {
+		framing = "ndjson"
+	}
 	timeout := time.Duration(adapter.RawInt(cfg.Raw, "idle_timeout_seconds")) * time.Second
 	return a.pool.Get(ctx, a.upstreamID(cfg), corecliacp.ProcessConfig{Command: command, Args: args, Env: env, Framing: framing, IdleTimeout: timeout})
+}
+
+func (a Adapter) setACPModelConfig(ctx context.Context, proc *corecliacp.Process, session corecliacp.ACPSessionNewResult, model string) error {
+	option, ok := findModelConfigOption(session.ConfigOptions)
+	if !ok {
+		return fmt.Errorf("%s ACP agent did not expose a model config option for configured model %q", a.id, model)
+	}
+	if option.CurrentValue == model {
+		return nil
+	}
+	if !configOptionContainsValue(option.Options, model) {
+		return fmt.Errorf("%s ACP model %q is not in config option %q", a.id, model, option.ID)
+	}
+	var result corecliacp.ACPSetSessionConfigOptionResult
+	return proc.Call(ctx, corecliacp.MethodSessionSetConfigOption, corecliacp.ACPSetSessionConfigOptionParams{
+		SessionID: session.SessionID,
+		ConfigID:  option.ID,
+		Value:     model,
+	}, &result)
 }
 
 func (a Adapter) dropProcess(ctx context.Context, cfg adapter.ProviderConfig) {
@@ -360,6 +416,53 @@ func stringSlice(value any) ([]string, bool) {
 	default:
 		return nil, false
 	}
+}
+
+func findModelConfigOption(options []corecliacp.ACPSessionConfigOption) (corecliacp.ACPSessionConfigOption, bool) {
+	for _, option := range options {
+		category := strings.ToLower(strings.TrimSpace(option.Category))
+		id := strings.ToLower(strings.TrimSpace(option.ID))
+		if category == "model" || id == "model" || id == "models" {
+			return option, true
+		}
+	}
+	return corecliacp.ACPSessionConfigOption{}, false
+}
+
+func configOptionContainsValue(raw json.RawMessage, value string) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	type optionValue struct {
+		Value   string        `json:"value"`
+		Options []optionValue `json:"options"`
+	}
+	var options []optionValue
+	if err := json.Unmarshal(raw, &options); err != nil {
+		return false
+	}
+	var walk func([]optionValue) bool
+	walk = func(items []optionValue) bool {
+		for _, item := range items {
+			if item.Value == value {
+				return true
+			}
+			if len(item.Options) > 0 && walk(item.Options) {
+				return true
+			}
+		}
+		return false
+	}
+	return walk(options)
+}
+
+func supportsACPSessionClose(init corecliacp.ACPInitializeResult) bool {
+	sessionCapabilities, ok := init.AgentCapabilities["sessionCapabilities"].(map[string]any)
+	if !ok {
+		return false
+	}
+	_, ok = sessionCapabilities["close"]
+	return ok
 }
 
 func promptText(req ir.Request) string {

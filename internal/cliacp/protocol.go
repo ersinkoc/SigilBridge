@@ -8,16 +8,19 @@ import (
 )
 
 const (
-	MethodInitialize    = "initialize"
-	MethodAuthenticate  = "authenticate"
-	MethodSessionNew    = "session/new"
-	MethodSessionPrompt = "session/prompt"
-	MethodSessionUpdate = "session/update"
-	MethodAgentMessage  = "agent.message"
-	MethodMessageDelta  = "agent.message_delta"
-	MethodMessageDone   = "agent.message_complete"
-	MethodShutdown      = "shutdown"
-	MethodError         = "error"
+	MethodInitialize             = "initialize"
+	MethodAuthenticate           = "authenticate"
+	MethodSessionNew             = "session/new"
+	MethodSessionPrompt          = "session/prompt"
+	MethodSessionUpdate          = "session/update"
+	MethodSessionCancel          = "session/cancel"
+	MethodSessionClose           = "session/close"
+	MethodSessionSetConfigOption = "session/set_config_option"
+	MethodAgentMessage           = "agent.message"
+	MethodMessageDelta           = "agent.message_delta"
+	MethodMessageDone            = "agent.message_complete"
+	MethodShutdown               = "shutdown"
+	MethodError                  = "error"
 )
 
 type InitializeParams struct {
@@ -57,7 +60,8 @@ type ACPSessionNewParams struct {
 }
 
 type ACPSessionNewResult struct {
-	SessionID string `json:"sessionId"`
+	SessionID     string                   `json:"sessionId"`
+	ConfigOptions []ACPSessionConfigOption `json:"configOptions,omitempty"`
 }
 
 type ACPContentBlock struct {
@@ -96,6 +100,33 @@ type ACPSessionPromptParams struct {
 
 type ACPSessionPromptResult struct {
 	StopReason string `json:"stopReason"`
+}
+
+type ACPSessionConfigOption struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name,omitempty"`
+	Category     string          `json:"category,omitempty"`
+	Type         string          `json:"type,omitempty"`
+	CurrentValue string          `json:"currentValue,omitempty"`
+	Options      json.RawMessage `json:"options,omitempty"`
+}
+
+type ACPSetSessionConfigOptionParams struct {
+	SessionID string `json:"sessionId"`
+	ConfigID  string `json:"configId"`
+	Value     string `json:"value"`
+}
+
+type ACPSetSessionConfigOptionResult struct {
+	ConfigOptions []ACPSessionConfigOption `json:"configOptions"`
+}
+
+type ACPSessionCancelParams struct {
+	SessionID string `json:"sessionId"`
+}
+
+type ACPSessionCloseParams struct {
+	SessionID string `json:"sessionId"`
 }
 
 type ACPSessionUpdateParams struct {

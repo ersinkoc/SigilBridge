@@ -2,7 +2,9 @@
 
 ## Overview
 
-CLI adapters let SigilBridge route requests through locally installed AI agent CLIs that already hold their own authenticated sessions. SigilBridge manages the subprocess lifecycle and communicates over Agent Client Protocol style JSON-RPC over stdio.
+CLI adapters let SigilBridge route requests through locally installed AI agent CLIs that already hold their own authenticated sessions. SigilBridge manages the subprocess lifecycle and communicates with ACP agents using JSON-RPC 2.0 over stdio.
+
+For `protocol: acp`, SigilBridge uses the stable ACP stdio transport: one UTF-8 JSON-RPC message per line on stdin/stdout. For older custom adapters, the legacy Content-Length JSON-RPC framing remains available when `framing` is explicitly configured away from `ndjson`.
 
 The bridge does not store the CLI's account credentials. Authentication remains in the CLI's own credential store.
 
@@ -59,10 +61,26 @@ Set `working_directory` to a directory the CLI can safely inspect. For productio
 ## Lifecycle
 
 - The process starts on first request or admin probe.
-- JSON-RPC messages are framed over stdin/stdout.
+- ACP JSON-RPC messages are newline-delimited on stdin/stdout.
+- SigilBridge sends `initialize` once per pooled process and reuses the negotiated protocol result.
+- Each bridge request creates a fresh ACP session with `session/new`.
+- If an upstream model is configured and the agent exposes a model `configOptions` selector, SigilBridge sets it with `session/set_config_option` before prompting. If a configured model cannot be selected, the request fails instead of silently using the agent default.
+- If the agent advertises `sessionCapabilities.close`, SigilBridge closes the ACP session after the prompt turn.
+- If the caller cancels the request context while a prompt is active, SigilBridge sends `session/cancel`.
 - Stderr is captured in a ring buffer for admin diagnostics.
 - Idle processes are stopped after `idle_timeout_seconds`.
 - Crashes are surfaced as health events and can be restarted by the host supervisor.
+
+## ACP Compatibility Checks
+
+Use this sequence before treating a local ACP agent as production-ready:
+
+1. Confirm the CLI works by itself under the same OS user that runs SigilBridge.
+2. Scan the machine from Admin UI -> Credentials -> CLI agents.
+3. Enable the detected agent.
+4. Probe the pool. A successful probe must pass `initialize`; for ACP agents it must use newline JSON-RPC.
+5. Send a real `/v1/chat/completions` request through a bridge key scoped to the pool.
+6. If the pool config includes a concrete model, confirm the agent exposes that model through ACP `configOptions`.
 
 ## Troubleshooting
 

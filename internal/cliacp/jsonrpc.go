@@ -107,9 +107,7 @@ func (c *Codec) Recv() (Message, error) {
 
 func parseMessage(raw []byte) (Message, error) {
 	var message Message
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&message); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&message); err != nil {
 		return Message{}, fmt.Errorf("parse JSON-RPC message: %w", err)
 	}
 	if message.JSONRPC != "2.0" {

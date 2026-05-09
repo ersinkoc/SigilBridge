@@ -31,6 +31,40 @@ func TestAdapterChatAgainstStubACP(t *testing.T) {
 	}
 }
 
+func TestAdapterChatACPUsesNDJSONAndModelConfig(t *testing.T) {
+	if os.Getenv("SIGILBRIDGE_ADAPTER_STUB_REAL_ACP") == "1" {
+		runAdapterStubRealACP(t)
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Executable() error = %v", err)
+	}
+	provider := NewGemini(exe, "-test.run=TestAdapterChatACPUsesNDJSONAndModelConfig")
+	cfg := adapter.ProviderConfig{
+		UpstreamID: "stub-real-acp",
+		Raw: map[string]any{
+			"args":     []any{"-test.run=TestAdapterChatACPUsesNDJSONAndModelConfig"},
+			"command":  exe,
+			"env":      []any{"SIGILBRIDGE_ADAPTER_STUB_REAL_ACP=1"},
+			"protocol": "acp",
+			"model":    "model-2",
+		},
+	}
+	req := ir.Request{Version: ir.Version, ID: "r1", ModelAlias: "stub", Messages: []ir.Message{{Role: ir.RoleUser, Content: []ir.ContentBlock{{Type: ir.ContentText, Text: "hi"}}}}}
+	first, err := provider.Chat(context.Background(), req, cfg)
+	if err != nil {
+		t.Fatalf("first Chat() error = %v", err)
+	}
+	second, err := provider.Chat(context.Background(), req, cfg)
+	if err != nil {
+		t.Fatalf("second Chat() error = %v", err)
+	}
+	if first.Content[0].Text != "model=model-2; prompt=User:\nhi" || second.Content[0].Text != first.Content[0].Text {
+		t.Fatalf("responses = %#v %#v", first, second)
+	}
+}
+
 func TestRetryableProcessError(t *testing.T) {
 	for _, message := range []string{"read |0: file already closed", "EOF", "write: broken pipe"} {
 		if !retryableProcessError(errText(message)) {
@@ -99,6 +133,73 @@ func runAdapterStubACP(t *testing.T) {
 		}
 		raw, _ := json.Marshal(corecliacp.AgentMessageResult{Response: ir.Response{Version: ir.Version, UpstreamProvider: "codex_cli", UpstreamModel: "stub", StopReason: ir.StopEndTurn, Content: []ir.ContentBlock{{Type: ir.ContentText, Text: "adapter response"}}}})
 		_ = codec.Send(corecliacp.Message{ID: msg.ID, Result: raw})
+	}
+}
+
+func runAdapterStubRealACP(t *testing.T) {
+	t.Helper()
+	codec := corecliacp.NewNDJSONCodec(adapterStdioRWC{Reader: os.Stdin, Writer: os.Stdout})
+	initializeCount := 0
+	model := "model-1"
+	sessionID := "sess-1"
+	for {
+		msg, err := codec.Recv()
+		if err != nil {
+			return
+		}
+		switch msg.Method {
+		case corecliacp.MethodInitialize:
+			initializeCount++
+			if initializeCount > 1 {
+				_ = codec.Send(corecliacp.Message{ID: msg.ID, Error: &corecliacp.Error{Code: -32600, Message: "initialize called more than once"}})
+				continue
+			}
+			raw, _ := json.Marshal(corecliacp.ACPInitializeResult{ProtocolVersion: 1, AgentInfo: corecliacp.ACPImplementation{Name: "stub-acp"}})
+			_ = codec.Send(corecliacp.Message{ID: msg.ID, Result: raw})
+		case corecliacp.MethodSessionNew:
+			raw, _ := json.Marshal(corecliacp.ACPSessionNewResult{
+				SessionID: sessionID,
+				ConfigOptions: []corecliacp.ACPSessionConfigOption{{
+					ID:           "model",
+					Name:         "Model",
+					Category:     "model",
+					Type:         "select",
+					CurrentValue: model,
+					Options:      json.RawMessage(`[{"value":"model-1","name":"Model 1"},{"value":"model-2","name":"Model 2"}]`),
+				}},
+			})
+			_ = codec.Send(corecliacp.Message{ID: msg.ID, Result: raw})
+		case corecliacp.MethodSessionSetConfigOption:
+			var params corecliacp.ACPSetSessionConfigOptionParams
+			_ = json.Unmarshal(msg.Params, &params)
+			model = params.Value
+			raw, _ := json.Marshal(corecliacp.ACPSetSessionConfigOptionResult{ConfigOptions: []corecliacp.ACPSessionConfigOption{{
+				ID:           "model",
+				Category:     "model",
+				CurrentValue: model,
+				Options:      json.RawMessage(`[{"value":"model-1","name":"Model 1"},{"value":"model-2","name":"Model 2"}]`),
+			}}})
+			_ = codec.Send(corecliacp.Message{ID: msg.ID, Result: raw})
+		case corecliacp.MethodSessionPrompt:
+			var params corecliacp.ACPSessionPromptParams
+			_ = json.Unmarshal(msg.Params, &params)
+			prompt := ""
+			if len(params.Prompt) > 0 {
+				prompt = params.Prompt[0].Text
+			}
+			updateRaw, _ := json.Marshal(corecliacp.ACPSessionUpdateParams{
+				SessionID: sessionID,
+				Update: struct {
+					SessionUpdate string                      `json:"sessionUpdate"`
+					Content       corecliacp.ACPContentBlocks `json:"content,omitempty"`
+				}{SessionUpdate: "agent_message_chunk", Content: corecliacp.ACPContentBlocks{{Type: "text", Text: "model=" + model + "; prompt=" + prompt}}},
+			})
+			_ = codec.Send(corecliacp.Message{Method: corecliacp.MethodSessionUpdate, Params: updateRaw})
+			resultRaw, _ := json.Marshal(corecliacp.ACPSessionPromptResult{StopReason: ir.StopEndTurn})
+			_ = codec.Send(corecliacp.Message{ID: msg.ID, Result: resultRaw})
+		case corecliacp.MethodShutdown:
+			return
+		}
 	}
 }
 

@@ -31,6 +31,10 @@ type Process struct {
 	callMu  sync.Mutex
 	idle    *time.Timer
 	timeout time.Duration
+
+	acpInitMu      sync.Mutex
+	acpInitialized bool
+	acpInitResult  ACPInitializeResult
 }
 
 func StartProcess(ctx context.Context, id string, cfg ProcessConfig) (*Process, error) {
@@ -76,6 +80,29 @@ func StartProcess(ctx context.Context, id string, cfg ProcessConfig) (*Process, 
 
 func (p *Process) Call(ctx context.Context, method string, params any, result any) error {
 	return p.CallWithHandler(ctx, method, params, result, nil)
+}
+
+func (p *Process) Notify(method string, params any) error {
+	raw, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
+	return p.codec.Send(Message{Method: method, Params: raw})
+}
+
+func (p *Process) EnsureACPInitialized(ctx context.Context, params ACPInitializeParams) (ACPInitializeResult, error) {
+	p.acpInitMu.Lock()
+	defer p.acpInitMu.Unlock()
+	if p.acpInitialized {
+		return p.acpInitResult, nil
+	}
+	var result ACPInitializeResult
+	if err := p.Call(ctx, MethodInitialize, params, &result); err != nil {
+		return ACPInitializeResult{}, err
+	}
+	p.acpInitialized = true
+	p.acpInitResult = result
+	return result, nil
 }
 
 func (p *Process) CallWithHandler(ctx context.Context, method string, params any, result any, handler func(Message) error) error {

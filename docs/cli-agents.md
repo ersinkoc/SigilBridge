@@ -45,6 +45,18 @@ pools:
 | `gemini_cli` | Install Gemini CLI, authenticate locally, then configure executable path. |
 | `aider_cli` | Install Aider plus an ACP-compatible headless shim if required by your version. |
 
+## Zed / ACP Registry Adapters
+
+Zed's external-agent integration uses the ACP Registry for several popular agents. These are different from SigilBridge's direct headless CLI adapters:
+
+| Registry ID | What it runs |
+| --- | --- |
+| `claude-acp` | Claude Agent SDK adapter. It runs Claude Code under the hood and exposes ACP. |
+| `codex-acp` | Zed's Codex ACP adapter. It runs Codex CLI under the hood and exposes ACP. |
+| `gemini` | Google Gemini CLI package in ACP mode. |
+
+SigilBridge exposes these registry entries as optional ACP agents in the CLI scan. Use the registry adapter when you want the same ACP surface Zed uses. Use the direct `*_cli` adapter when you want the simpler local headless command path.
+
 ## Install Pattern
 
 1. Install the CLI on the SigilBridge host.

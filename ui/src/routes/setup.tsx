@@ -8,7 +8,7 @@ import { ErrorState, Skeleton } from "../components/common/State";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { api } from "../lib/api";
-import type { CredentialsResponse, EndpointInfoResponse, KeyDTO, PoolDTO, ProviderCatalogDTO } from "../types/api";
+import type { CLIStatusDTO, CredentialsResponse, EndpointInfoResponse, KeyDTO, PoolDTO, ProviderCatalogDTO } from "../types/api";
 
 type SetupStep = {
   id: string;
@@ -28,6 +28,7 @@ export function SetupRoute() {
   const endpoints = useQuery({ queryKey: ["endpoints"], queryFn: () => api<EndpointInfoResponse>("/admin/v1/endpoints") });
   const keys = useQuery({ queryKey: ["keys"], queryFn: () => api<KeyDTO[]>("/admin/v1/keys") });
   const credentials = useQuery({ queryKey: ["credentials"], queryFn: () => api<CredentialsResponse>("/admin/v1/credentials") });
+  const cliDetect = useQuery({ queryKey: ["credentials-cli-detect"], queryFn: () => api<CLIStatusDTO>("/admin/v1/credentials/cli/detect") });
   const pools = useQuery({ queryKey: ["pools"], queryFn: () => api<PoolDTO[]>("/admin/v1/pools") });
   const catalog = useQuery({ queryKey: ["provider-catalog"], queryFn: () => api<ProviderCatalogDTO>("/admin/v1/provider-catalog") });
   const loading = endpoints.isLoading || keys.isLoading || credentials.isLoading || pools.isLoading || catalog.isLoading;
@@ -35,12 +36,14 @@ export function SetupRoute() {
   const bridgeKeys = keys.data ?? [];
   const apiKeys = credentials.data?.api_keys ?? [];
   const cliAgents = credentials.data?.cli?.agents ?? [];
+  const runnableCliCandidates = (cliDetect.data?.agents ?? []).filter((agent) => agent.available && !agent.configured).length;
   const providers = catalog.data?.providers ?? [];
   const configuredProviders = providers.filter((provider) => provider.configured || provider.available).length;
   const routedPools = (pools.data ?? []).filter((pool) => (pool.upstreams ?? []).length > 0);
   const readySteps = setupSteps({
     bridgeKeyReady: bridgeKeys.some((key) => !key.revoked_at),
     credentialReady: apiKeys.length > 0 || cliAgents.length > 0,
+    runnableCliReady: runnableCliCandidates > 0,
     catalogReady: providers.length > 0,
     poolsReady: routedPools.length > 0
   });
@@ -82,7 +85,7 @@ export function SetupRoute() {
           <SetupWizard steps={readySteps} activeIndex={activeIndex} readyCount={readyCount} />
           <div className="setup-inventory-grid">
             <InventoryCard title="Client keys" value={bridgeKeys.filter((key) => !key.revoked_at).length} detail={`${bridgeKeys.length} total bridge keys`} icon={KeyRound} to="/keys" />
-            <InventoryCard title="Provider auth" value={apiKeys.length + cliAgents.length} detail={`${apiKeys.length} API keys, ${cliAgents.length} CLI agents`} icon={PlugZap} to="/credentials" />
+            <InventoryCard title="Provider auth" value={apiKeys.length + cliAgents.length} detail={`${apiKeys.length} API keys, ${cliAgents.length} CLI agents, ${runnableCliCandidates} runnable detected`} icon={PlugZap} to="/credentials" />
             <InventoryCard title="Catalog" value={providers.length} detail={`${configuredProviders} configured or available providers`} icon={Layers3} to="/models" />
             <InventoryCard title="Pools" value={routedPools.length} detail={`${pools.data?.length ?? 0} pools in config`} icon={Route} to="/pools" />
           </div>
@@ -220,7 +223,8 @@ function InventoryCard({
   );
 }
 
-function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; catalogReady: boolean; poolsReady: boolean }): SetupStep[] {
+function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; runnableCliReady: boolean; catalogReady: boolean; poolsReady: boolean }): SetupStep[] {
+  const recommendCli = !input.credentialReady && input.runnableCliReady;
   return [
     {
       id: "bridge-key",
@@ -235,15 +239,15 @@ function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; 
     {
       id: "provider-auth",
       title: "Add provider authentication",
-      detail: "Store API keys, enable local CLI agents, or configure advanced OAuth without mixing those concerns.",
+      detail: recommendCli ? "A runnable local CLI agent was detected. Enable it or choose an API-key provider." : "Store API keys, enable local CLI agents, or configure advanced OAuth without mixing those concerns.",
       ready: input.credentialReady,
-      action: input.credentialReady ? "Manage credentials" : "Add API key",
-      to: input.credentialReady ? "/credentials" : "/credentials/api-key/new",
-      icon: PlugZap,
-      outcome: "Use an API key provider or enable a local CLI agent before binding a real route.",
-      secondaryAction: input.credentialReady ? undefined : "Use CLI agent",
-      secondaryTo: input.credentialReady ? undefined : "/credentials/cli",
-      secondaryIcon: Terminal
+      action: input.credentialReady ? "Manage credentials" : recommendCli ? "Use CLI agent" : "Add API key",
+      to: input.credentialReady ? "/credentials" : recommendCli ? "/credentials/cli" : "/credentials/api-key/new",
+      icon: recommendCli ? Terminal : PlugZap,
+      outcome: recommendCli ? "Use the detected local agent to avoid pasting provider secrets, then bind it from Pools." : "Use an API key provider or enable a local CLI agent before binding a real route.",
+      secondaryAction: input.credentialReady ? undefined : recommendCli ? "Add API key" : "Scan CLI agents",
+      secondaryTo: input.credentialReady ? undefined : recommendCli ? "/credentials/api-key/new" : "/credentials/cli",
+      secondaryIcon: recommendCli ? PlugZap : Terminal
     },
     {
       id: "model-catalog",

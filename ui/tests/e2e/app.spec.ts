@@ -174,8 +174,10 @@ test("renders the dashboard and toggles theme", async ({ page }) => {
   await expect(page.getByText("40% complete")).toBeVisible();
   await expect(page.getByText("Current step")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Add provider authentication" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Use CLI agent" })).toBeVisible();
-  await page.getByRole("button", { name: "Use CLI agent" }).click();
+  await expect(page.getByText("1 runnable detected")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use CLI agent" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add API key" }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Use CLI agent" }).first().click();
   await expect(page).toHaveURL(/\/admin\/ui\/credentials\/cli$/);
 });
 

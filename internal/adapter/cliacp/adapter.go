@@ -106,7 +106,7 @@ func (a Adapter) chatACPOnce(ctx context.Context, req ir.Request, cfg adapter.Pr
 	if session.SessionID == "" {
 		return ir.Response{}, fmt.Errorf("%s ACP session/new returned an empty sessionId", a.id)
 	}
-	if model := adapter.RawString(cfg.Raw, "model"); model != "" {
+	if model := adapter.RawString(cfg.Raw, "model"); model != "" && !a.usesACPModelFlag() {
 		if err := a.setACPModelConfig(ctx, proc, session, model); err != nil {
 			return ir.Response{}, processError(a.id, proc, err)
 		}
@@ -266,6 +266,9 @@ func (a Adapter) process(ctx context.Context, cfg adapter.ProviderConfig) (*core
 	if rawArgs, ok := stringSlice(cfg.Raw["args"]); ok {
 		args = rawArgs
 	}
+	if adapter.RawString(cfg.Raw, "protocol") == "acp" {
+		args = a.argsWithACPModel(args, adapter.RawString(cfg.Raw, "model"))
+	}
 	var env []string
 	if rawEnv, ok := stringSlice(cfg.Raw["env"]); ok {
 		env = rawEnv
@@ -295,6 +298,18 @@ func (a Adapter) setACPModelConfig(ctx context.Context, proc *corecliacp.Process
 		ConfigID:  option.ID,
 		Value:     model,
 	}, &result)
+}
+
+func (a Adapter) argsWithACPModel(args []string, model string) []string {
+	out := append([]string{}, args...)
+	if model == "" || !a.usesACPModelFlag() || hasAnyArg(out, "--model", "-m") {
+		return out
+	}
+	return append(out, "--model", model)
+}
+
+func (a Adapter) usesACPModelFlag() bool {
+	return a.id == "gemini_cli" || a.id == "gemini"
 }
 
 func (a Adapter) dropProcess(ctx context.Context, cfg adapter.ProviderConfig) {
@@ -416,6 +431,17 @@ func stringSlice(value any) ([]string, bool) {
 	default:
 		return nil, false
 	}
+}
+
+func hasAnyArg(args []string, values ...string) bool {
+	for _, arg := range args {
+		for _, value := range values {
+			if arg == value {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func findModelConfigOption(options []corecliacp.ACPSessionConfigOption) (corecliacp.ACPSessionConfigOption, bool) {

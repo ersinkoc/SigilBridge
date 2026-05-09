@@ -103,6 +103,7 @@ $env:SIGILBRIDGE_ADMIN_TOKEN = "<admin-token>"
   -Providers claude_code_cli,codex_cli,gemini_cli,claude-acp,codex-acp,gemini `
   -Enable `
   -Probe `
+  -ProbeTimeoutSeconds 120 `
   -OutputPath .\tmp\cli-agent-matrix.json
 ```
 

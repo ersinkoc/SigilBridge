@@ -6,6 +6,8 @@ param(
   [switch]$Probe,
   [switch]$IncludeMissing,
   [switch]$AllowThirdPartyNpx,
+  [int]$RequestTimeoutSeconds = 20,
+  [int]$ProbeTimeoutSeconds = 120,
   [string]$OutputPath
 )
 
@@ -20,7 +22,8 @@ function Invoke-AdminJson {
     [Parameter(Mandatory=$true)][string]$Path,
     [string]$Method = "GET",
     [object]$Body = $null,
-    [Microsoft.PowerShell.Commands.WebRequestSession]$Session
+    [Microsoft.PowerShell.Commands.WebRequestSession]$Session,
+    [int]$TimeoutSeconds = $RequestTimeoutSeconds
   )
   $headers = @{}
   if ($Method -ne "GET") {
@@ -30,6 +33,7 @@ function Invoke-AdminJson {
     Method = $Method
     Uri = (Join-AdminUrl $AdminUrl $Path)
     Headers = $headers
+    TimeoutSec = $TimeoutSeconds
   }
   if ($Session) {
     $params.WebSession = $Session
@@ -139,16 +143,29 @@ foreach ($agent in @($detect.agents)) {
 
   if ($Probe -and -not [string]::IsNullOrWhiteSpace([string]$row.pool)) {
     try {
-      $probeResult = Invoke-AdminJson -Session $session -Method "POST" -Path "/admin/v1/pools/$([uri]::EscapeDataString([string]$row.pool))/probe" -Body @{}
-      $row.probe_ok = [bool]$probeResult.ok
+      $probeResult = Invoke-AdminJson -Session $session -Method "POST" -Path "/admin/v1/pools/$([uri]::EscapeDataString([string]$row.pool))/probe" -Body @{} -TimeoutSeconds $ProbeTimeoutSeconds
+      $probeItems = @($probeResult.results)
+      if ($probeItems.Count -eq 0 -or $null -eq $probeItems[0]) {
+        $probeItems = @($probeResult.upstreams)
+      }
+      $targetResult = @($probeItems | Where-Object {
+        [string]$_.id -eq [string]$row.upstream -or
+        [string]$_.upstream_id -eq [string]$row.upstream -or
+        [string]$_.provider -eq $provider
+      } | Select-Object -First 1)
+      if ($targetResult.Count -gt 0) {
+        $row.probe_ok = [bool]$targetResult[0].ok
+      } else {
+        $row.probe_ok = [bool]$probeResult.ok
+      }
       $row.checked = [int]$probeResult.checked
       $row.passed = [int]$probeResult.passed
-      $row.status = if ([bool]$probeResult.ok) { "passed" } else { "probe_failed" }
-      if (-not [bool]$probeResult.ok) {
-        $firstError = @($probeResult.results | Where-Object { -not $_.ok } | Select-Object -First 1)
-        if ($firstError.Count -gt 0) {
-          $row.error = [string]$firstError[0].error
-        }
+      $row.status = if ([bool]$row.probe_ok) { "passed" } else { "probe_failed" }
+      if ($targetResult.Count -gt 0 -and -not [bool]$targetResult[0].ok) {
+        $row.error = [string]$targetResult[0].error
+      } elseif (-not [bool]$row.probe_ok) {
+        $firstError = @($probeItems | Where-Object { -not $_.ok } | Select-Object -First 1)
+        if ($firstError.Count -gt 0) { $row.error = [string]$firstError[0].error }
       }
     } catch {
       $row.probe_ok = $false

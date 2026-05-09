@@ -941,7 +941,7 @@ func (s adminCredentialService) CLIEnable(_ context.Context, req adminapi.CLIEna
 	if len(args) == 0 {
 		args = append([]string{}, defaultSpec.Args...)
 	}
-	poolName := cleanName(req.Pool, providerPoolName(provider))
+	poolName := cleanName(req.Pool, cliDefaultPoolName(provider, defaultSpec, s.rt.pools.Pools))
 	upstreamID := cleanName(req.UpstreamID, provider+"-local")
 	upstream := config.Upstream{
 		ID:       upstreamID,
@@ -1724,6 +1724,31 @@ func cliDefaults() map[string]cliDefault {
 
 func providerPoolName(provider string) string {
 	return strings.TrimSuffix(strings.TrimSuffix(provider, "_api"), "_cli")
+}
+
+func cliDefaultPoolName(provider string, spec cliDefault, pools []config.Pool) string {
+	base := providerPoolName(provider)
+	if !poolHasDifferentProvider(pools, base, provider) {
+		return base
+	}
+	if spec.Source == "ACP registry" && !strings.HasSuffix(provider, "-acp") {
+		return provider + "-acp"
+	}
+	return provider
+}
+
+func poolHasDifferentProvider(pools []config.Pool, poolName, provider string) bool {
+	for _, pool := range pools {
+		if pool.Name != poolName {
+			continue
+		}
+		for _, upstream := range pool.Upstreams {
+			if upstream.Provider != "" && upstream.Provider != provider {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func cleanName(value, fallback string) string {

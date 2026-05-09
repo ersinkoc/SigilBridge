@@ -143,6 +143,34 @@ func TestCLIEnablePersistsProtocolArgsAndStatus(t *testing.T) {
 	}
 }
 
+func TestCLIEnableAvoidsRegistryPoolCollision(t *testing.T) {
+	dir := t.TempDir()
+	poolsPath := filepath.Join(dir, "pools.yaml")
+	rt := &adminRuntime{
+		poolsPath: poolsPath,
+		pools: &config.PoolsFile{Pools: []config.Pool{{
+			Name: "gemini",
+			Upstreams: []config.Upstream{{
+				ID:       "gemini-cli-local",
+				Provider: "gemini_cli",
+				Config:   map[string]any{"command": os.Args[0]},
+			}},
+		}}},
+		cfg: &config.Config{},
+	}
+	service := adminCredentialService{rt: rt}
+	out, err := service.CLIEnable(context.Background(), adminapi.CLIEnableRequest{Provider: "gemini", Command: os.Args[0]})
+	if err != nil {
+		t.Fatalf("CLIEnable() error = %v", err)
+	}
+	if out["pool"] != "gemini-acp" {
+		t.Fatalf("pool = %#v, want gemini-acp", out["pool"])
+	}
+	if len(rt.pools.Pools) != 2 || rt.pools.Pools[1].Name != "gemini-acp" || rt.pools.Pools[1].Upstreams[0].Provider != "gemini" {
+		t.Fatalf("pools = %#v", rt.pools.Pools)
+	}
+}
+
 func TestNormalizeCatalogCredentialCodingPlanProviders(t *testing.T) {
 	provider, model := normalizeCatalogCredential("openai_api", "minimax-coding-plan", "https://api.minimax.io/anthropic/v1", "MiniMax-M2.5")
 	if provider != "anthropic_api" || model != "MiniMax-M2.5" {

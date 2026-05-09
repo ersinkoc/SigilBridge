@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/sigilbridge/sigilbridge/internal/adapter"
@@ -40,7 +41,7 @@ func TestAdapterChatACPUsesNDJSONAndModelConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Executable() error = %v", err)
 	}
-	provider := NewGemini(exe, "-test.run=TestAdapterChatACPUsesNDJSONAndModelConfig")
+	provider := New("stub_acp", exe, "-test.run=TestAdapterChatACPUsesNDJSONAndModelConfig")
 	cfg := adapter.ProviderConfig{
 		UpstreamID: "stub-real-acp",
 		Raw: map[string]any{
@@ -117,6 +118,18 @@ func TestCodexHeadlessUsesStdinPrompt(t *testing.T) {
 	}
 	if got := adapter.RawString(cfg.Raw, "stdin"); got == "" || got != "User:\nhello codex" {
 		t.Fatalf("stdin = %q", got)
+	}
+}
+
+func TestGeminiACPModelUsesCommandFlag(t *testing.T) {
+	provider := NewGemini("gemini")
+	args := provider.argsWithACPModel([]string{"--acp", "--skip-trust"}, "gemini-test")
+	if strings.Join(args, " ") != "--acp --skip-trust --model gemini-test" {
+		t.Fatalf("args = %#v", args)
+	}
+	args = provider.argsWithACPModel([]string{"--acp", "--model", "configured"}, "gemini-test")
+	if strings.Join(args, " ") != "--acp --model configured" {
+		t.Fatalf("duplicate model args = %#v", args)
 	}
 }
 

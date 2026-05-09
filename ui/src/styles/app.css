@@ -1287,6 +1287,13 @@ textarea:focus-visible,
   font-style: normal;
 }
 
+.setup-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .setup-next-card {
   position: sticky;
   top: 18px;
@@ -3059,6 +3066,10 @@ label.check-row {
   .provider-secret,
   .endpoint-row {
     grid-template-columns: 1fr;
+  }
+
+  .setup-step-actions {
+    justify-content: flex-start;
   }
 
   .table {

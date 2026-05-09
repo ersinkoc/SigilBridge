@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Clipboard, KeyRound, Layers3, MessageSquareText, PlugZap, Route, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clipboard, KeyRound, Layers3, MessageSquareText, PlugZap, Route, ShieldCheck, Terminal } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ComponentType } from "react";
@@ -19,7 +19,9 @@ type SetupStep = {
   to: string;
   icon: ComponentType<{ size?: number }>;
   outcome: string;
-  secondary?: string;
+  secondaryAction?: string;
+  secondaryTo?: string;
+  secondaryIcon?: ComponentType<{ size?: number }>;
 };
 
 export function SetupRoute() {
@@ -110,6 +112,7 @@ function SetupWizard({ steps, activeIndex, readyCount }: { steps: SetupStep[]; a
         <ol className="setup-step-list">
           {steps.map((step, index) => {
             const Icon = step.icon;
+            const SecondaryIcon = step.secondaryIcon;
             const isActive = index === activeIndex && !step.ready;
             const state = step.ready ? "complete" : isActive ? "active" : "queued";
             return (
@@ -121,11 +124,20 @@ function SetupWizard({ steps, activeIndex, readyCount }: { steps: SetupStep[]; a
                   <em>{step.outcome}</em>
                 </div>
                 <span className={step.ready ? "status-pill ok" : isActive ? "status-pill" : "status-pill muted-pill"}>{step.ready ? "Complete" : isActive ? "Current step" : "Queued"}</span>
-                <Link to={step.to}>
-                  <Button variant={isActive ? "primary" : "secondary"} icon={<Icon size={15} />}>
-                    {step.action}
-                  </Button>
-                </Link>
+                <div className="setup-step-actions">
+                  <Link to={step.to}>
+                    <Button variant={isActive ? "primary" : "secondary"} icon={<Icon size={15} />}>
+                      {step.action}
+                    </Button>
+                  </Link>
+                  {step.secondaryAction && step.secondaryTo ? (
+                    <Link to={step.secondaryTo}>
+                      <Button variant="secondary" icon={SecondaryIcon ? <SecondaryIcon size={15} /> : undefined}>
+                        {step.secondaryAction}
+                      </Button>
+                    </Link>
+                  ) : null}
+                </div>
               </li>
             );
           })}
@@ -228,7 +240,10 @@ function setupSteps(input: { bridgeKeyReady: boolean; credentialReady: boolean; 
       action: input.credentialReady ? "Manage credentials" : "Add API key",
       to: input.credentialReady ? "/credentials" : "/credentials/api-key/new",
       icon: PlugZap,
-      outcome: "A pool can only route real traffic after at least one provider credential or local agent is available."
+      outcome: "Use an API key provider or enable a local CLI agent before binding a real route.",
+      secondaryAction: input.credentialReady ? undefined : "Use CLI agent",
+      secondaryTo: input.credentialReady ? undefined : "/credentials/cli",
+      secondaryIcon: Terminal
     },
     {
       id: "model-catalog",

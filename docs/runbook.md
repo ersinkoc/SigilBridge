@@ -154,6 +154,34 @@ Files older than `audit.rotate_compress_after_days` are gzipped. Files older tha
 | CLI agent unavailable | Executable missing or not authenticated | Install the CLI, sign in with its native auth command, and probe again. |
 | Plugin not loaded | Bad manifest, executable path, or handshake failure | Validate `plugin.yaml`, permissions, and plugin logs. |
 
+## Reverse Proxy Admin Checks
+
+Admin writes are protected by same-origin checks when the browser uses the `sigilbridge_admin` cookie. If a proxy changes the public origin before the request reaches SigilBridge, browser writes can fail with `403`.
+
+Required proxy behavior:
+
+- Preserve the public `Host` header.
+- Set `X-Forwarded-Proto` to the public scheme, usually `https`.
+- Do not rewrite `/admin/ui/` and `/admin/v1/` onto different public origins.
+- Prefer bearer admin tokens for automation instead of browser cookies.
+
+Nginx example:
+
+```nginx
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+```
+
+Validation:
+
+```bash
+curl -i https://bridge.example.com/admin/v1/reload \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Origin: https://bridge.example.com" \
+  -X POST
+```
+
 ## Plugin Install
 
 1. Build the plugin binary for the host OS and architecture.

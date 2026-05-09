@@ -94,6 +94,20 @@ Use this sequence before treating a local ACP agent as production-ready:
 5. Send a real `/v1/chat/completions` request through a bridge key scoped to the pool.
 6. If the pool config includes a concrete model, confirm the agent exposes that model through ACP `configOptions`.
 
+The same checks can be automated from PowerShell:
+
+```powershell
+$env:SIGILBRIDGE_ADMIN_TOKEN = "<admin-token>"
+.\scripts\cli-agent-matrix.ps1 `
+  -AdminUrl "http://127.0.0.1:8788" `
+  -Providers claude_code_cli,codex_cli,gemini_cli,claude-acp,codex-acp,gemini `
+  -Enable `
+  -Probe `
+  -OutputPath .\tmp\cli-agent-matrix.json
+```
+
+The matrix script never writes admin tokens or provider credentials to the report. ACP Registry agents that run through `npx` are skipped unless `-AllowThirdPartyNpx` is supplied.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Resolution |

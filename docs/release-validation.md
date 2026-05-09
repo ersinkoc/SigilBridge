@@ -89,6 +89,15 @@ Flow:
 6. Send a streaming request through `/v1/chat/completions`.
 7. Confirm streamed content, process health, stderr capture, audit record, cancellation behavior, and idle shutdown.
 
+For a repeatable local matrix report:
+
+```powershell
+$env:SIGILBRIDGE_ADMIN_TOKEN = "<admin-token>"
+.\scripts\cli-agent-matrix.ps1 -AdminUrl "http://127.0.0.1:8788" -Providers claude_code_cli,codex_cli,gemini_cli -Enable -Probe -OutputPath .\tmp\cli-agent-matrix.json
+```
+
+Registry agents that run through `npx` are skipped unless `-AllowThirdPartyNpx` is supplied, because probing them can download and execute third-party packages.
+
 ## Fresh-Host Deployment
 
 Docker:

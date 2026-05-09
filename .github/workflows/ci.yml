@@ -21,7 +21,7 @@ jobs:
             goarch: amd64
           - os: macos-latest
             goarch: arm64
-          - os: windows-latest
+          - os: windows-2022
             goarch: amd64
     steps:
       - uses: actions/checkout@v6

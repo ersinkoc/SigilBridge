@@ -45,8 +45,24 @@ func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
 			writeErr(w, http.StatusForbidden, "forbidden")
 			return
 		}
+		if s.shouldRateLimit(r) && !s.rl.Allow(subject, 120) {
+			writeErr(w, http.StatusTooManyRequests, "rate limit exceeded")
+			return
+		}
 		next(w, r.WithContext(context.WithValue(r.Context(), adminSubjectKey{}, subject)))
 	}
+}
+
+func (s *Server) shouldRateLimit(r *http.Request) bool {
+	switch r.URL.Path {
+	case "/admin/v1/credentials/oauth/providers",
+		"/admin/v1/credentials/oauth/refresh",
+		"/admin/v1/credentials/oauth/revoke",
+		"/admin/v1/credentials/api-key",
+		"/admin/v1/credentials/session":
+		return true
+	}
+	return false
 }
 
 func validAdminWriteOrigin(r *http.Request) bool {
@@ -55,9 +71,6 @@ func validAdminWriteOrigin(r *http.Request) bool {
 		return true
 	}
 	if r.Header.Get("Authorization") != "" {
-		return true
-	}
-	if _, err := r.Cookie("sigilbridge_admin"); err != nil {
 		return true
 	}
 	expectedScheme, expectedHost := requestOrigin(r)
@@ -69,7 +82,6 @@ func validAdminWriteOrigin(r *http.Request) bool {
 		if originMatches(value, expectedScheme, expectedHost) {
 			return true
 		}
-		return false
 	}
 	return false
 }

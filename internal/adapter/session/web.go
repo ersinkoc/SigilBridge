@@ -85,7 +85,10 @@ func (a *WebAdapter) Chat(ctx context.Context, req ir.Request, cfg adapter.Provi
 		return ir.Response{}, &adapter.Error{Class: adapter.Network, Provider: a.id, UpstreamID: cfg.UpstreamID, Message: err.Error(), Retryable: true, Wrapped: err}
 	}
 	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ir.Response{}, &adapter.Error{Class: adapter.Network, Provider: a.id, UpstreamID: cfg.UpstreamID, Message: err.Error(), Retryable: true, Wrapped: err}
+	}
 	if resp.StatusCode >= 400 {
 		class := adapter.ClassifyHTTP(resp.StatusCode)
 		return ir.Response{}, &adapter.Error{Class: class, Provider: a.id, UpstreamID: cfg.UpstreamID, HTTPStatus: resp.StatusCode, Message: string(raw), Retryable: adapter.Retryable(class)}
@@ -101,15 +104,26 @@ func (a *WebAdapter) Stream(ctx context.Context, req ir.Request, cfg adapter.Pro
 	if err != nil {
 		return nil, err
 	}
-	ch := make(chan ir.Event)
+	ch := make(chan ir.Event, 1)
 	go func() {
 		defer close(ch)
 		ch <- ir.Event{Version: ir.Version, Type: ir.EventStart}
 		for i, block := range resp.Content {
-			ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Index: i, Delta: &block}
+			select {
+			case ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Index: i, Delta: &block}:
+			case <-ctx.Done():
+				return
+			}
 		}
-		ch <- ir.Event{Version: ir.Version, Type: ir.EventUsage, Usage: &resp.Usage}
-		ch <- ir.Event{Version: ir.Version, Type: ir.EventStop, StopReason: resp.StopReason}
+		select {
+		case ch <- ir.Event{Version: ir.Version, Type: ir.EventUsage, Usage: &resp.Usage}:
+		case <-ctx.Done():
+			return
+		}
+		select {
+		case ch <- ir.Event{Version: ir.Version, Type: ir.EventStop, StopReason: resp.StopReason}:
+		case <-ctx.Done():
+		}
 	}()
 	return ch, nil
 }
@@ -159,9 +173,29 @@ func (a *WebAdapter) endpoint(cred SessionCredential, cfg adapter.ProviderConfig
 	return a.base(cfg) + endpoint
 }
 
+var permittedBaseURLsSession = map[string]bool{
+	"https://api.anthropic.com":        true,
+	"https://console.anthropic.com":    true,
+	"https://api.openai.com":          true,
+	"https://openai.com":              true,
+	"https://api.cohere.ai":           true,
+	"https://api.mistral.ai":          true,
+	"https://api.replicate.com":       true,
+	"https://generativelanguage.googleapis.com": true,
+}
+
+func isLocalhostURLSession(base string) bool {
+	lower := strings.ToLower(base)
+	return strings.HasPrefix(lower, "http://127.0.0.1") || strings.HasPrefix(lower, "http://localhost") || strings.HasPrefix(lower, "http://[::1]")
+}
+
 func (a *WebAdapter) base(cfg adapter.ProviderConfig) string {
 	if base := adapter.RawString(cfg.Raw, "base_url"); base != "" {
-		return strings.TrimRight(base, "/")
+		base = strings.TrimRight(base, "/")
+		if permittedBaseURLsSession[base] || isLocalhostURLSession(base) {
+			return base
+		}
+		return a.baseURL
 	}
 	return a.baseURL
 }
@@ -171,19 +205,23 @@ func (a *WebAdapter) pace(ctx context.Context, id string) {
 		return
 	}
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	wait := time.Until(a.last[id].Add(a.minInterval))
-	if wait > 0 {
-		timer := time.NewTimer(wait)
+	if wait <= 0 {
+		a.last[id] = time.Now()
 		a.mu.Unlock()
-		select {
-		case <-timer.C:
-		case <-ctx.Done():
-			timer.Stop()
-		}
-		a.mu.Lock()
+		return
 	}
+	timer := time.NewTimer(wait)
+	a.mu.Unlock()
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-ctx.Done():
+		return
+	}
+	a.mu.Lock()
 	a.last[id] = time.Now()
+	a.mu.Unlock()
 }
 
 func sessionID(cfg adapter.ProviderConfig, providerID string) string {

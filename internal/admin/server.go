@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/sigilbridge/sigilbridge/internal/events"
 )
@@ -30,10 +32,33 @@ type Services struct {
 type Server struct {
 	services Services
 	mux      *http.ServeMux
+	rl       *adminRateLimiter
+}
+
+type adminRateLimiter struct {
+	mu         sync.Mutex
+	lastBucket map[string]int64
+	counts     map[string]int64
+}
+
+func newAdminRateLimiter() *adminRateLimiter {
+	return &adminRateLimiter{lastBucket: map[string]int64{}, counts: map[string]int64{}}
+}
+
+func (rl *adminRateLimiter) Allow(key string, limit int64) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	now := time.Now().Unix() / 60
+	if rl.lastBucket[key] != now {
+		rl.lastBucket[key] = now
+		rl.counts[key] = 0
+	}
+	rl.counts[key]++
+	return rl.counts[key] <= limit
 }
 
 func New(services Services) *Server {
-	s := &Server{services: services, mux: http.NewServeMux()}
+	s := &Server{services: services, mux: http.NewServeMux(), rl: newAdminRateLimiter()}
 	s.routes()
 	return s
 }

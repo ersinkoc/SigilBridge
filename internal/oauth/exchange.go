@@ -57,8 +57,7 @@ func RevokeToken(ctx context.Context, client HTTPClient, revokeURL, clientID, to
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		raw, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("revoke endpoint returned %d: %s", resp.StatusCode, raw)
+		return fmt.Errorf("revoke endpoint returned %d", resp.StatusCode)
 	}
 	return nil
 }
@@ -77,7 +76,10 @@ func tokenPost(ctx context.Context, client HTTPClient, tokenURL string, form url
 		return Token{}, err
 	}
 	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Token{}, fmt.Errorf("read token response: %w", err)
+	}
 	if resp.StatusCode >= 400 {
 		return Token{}, parseTokenError(raw, resp.StatusCode)
 	}
@@ -134,7 +136,7 @@ func parseTokenError(raw []byte, status int) error {
 	_ = json.Unmarshal(raw, &payload)
 	if payload.Error == "" {
 		payload.Error = fmt.Sprintf("http_%d", status)
-		payload.ErrorDescription = string(raw)
+		payload.ErrorDescription = "token request failed"
 	}
 	return &OAuthError{Code: payload.Error, Description: payload.ErrorDescription, Temporary: status >= 500 || status == http.StatusTooManyRequests || payload.Error == "authorization_pending" || payload.Error == "slow_down"}
 }

@@ -18,7 +18,15 @@ func (s *Server) openAIChat(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	raw, _ := io.ReadAll(r.Body)
+	raw, err := io.ReadAll(io.LimitReader(r.Body, maxIngressBodyBytes+1))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "failed to read request body")
+		return
+	}
+	if int64(len(raw)) > maxIngressBodyBytes {
+		writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
+		return
+	}
 	req, err := ir.NormalizeOAIRequest(raw, keyID, time.Now().UTC())
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())

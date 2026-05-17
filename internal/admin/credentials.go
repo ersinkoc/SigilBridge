@@ -1,8 +1,8 @@
 package admin
 
 import (
-	"html"
 	"net/http"
+	"strings"
 )
 
 func (s *Server) credentials(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +39,10 @@ func (s *Server) oauthBootstrap(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := decode(r, &req); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if strings.TrimSpace(req.Provider) == "" {
+		writeErr(w, http.StatusBadRequest, "provider is required")
 		return
 	}
 	out, err := s.services.Credentials.OAuthBootstrap(r.Context(), req.Provider, req.Name, req.Mode)
@@ -143,16 +147,16 @@ func (s *Server) oauthRevoke(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) oauthCallback(w http.ResponseWriter, r *http.Request) {
 	values := r.URL.Query()
-	out, err := s.services.Credentials.OAuthCallback(r.Context(), values.Get("state"), values.Get("code"), values.Get("error"))
+	_, err := s.services.Credentials.OAuthCallback(r.Context(), values.Get("state"), values.Get("code"), values.Get("error"))
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("<!doctype html><title>SigilBridge OAuth failed</title><h1>OAuth failed</h1><p>" + html.EscapeString(err.Error()) + "</p>"))
+		_, _ = w.Write([]byte("<!doctype html><title>SigilBridge OAuth failed</title><h1>OAuth failed</h1><p>Authentication failed. Please try again or contact your administrator.</p>"))
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("<!doctype html><title>SigilBridge OAuth complete</title><h1>OAuth credential stored</h1><p>You can close this tab.</p><code>" + html.EscapeString(out["vault_id"].(string)) + "</code>"))
+	_, _ = w.Write([]byte("<!doctype html><title>SigilBridge OAuth complete</title><h1>OAuth credential stored</h1><p>You can close this tab.</p>"))
 }
 
 func (s *Server) cliStatus(w http.ResponseWriter, r *http.Request) {

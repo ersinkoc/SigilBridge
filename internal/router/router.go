@@ -116,15 +116,26 @@ func (r *Router) Stream(ctx context.Context, req ir.Request) (<-chan ir.Event, e
 	if err != nil {
 		return nil, err
 	}
-	ch := make(chan ir.Event)
+	ch := make(chan ir.Event, 1)
 	go func() {
 		defer close(ch)
 		ch <- ir.Event{Version: ir.Version, Type: ir.EventStart}
 		for i, block := range resp.Content {
-			ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Index: i, Delta: &block}
+			select {
+			case ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Index: i, Delta: &block}:
+			case <-ctx.Done():
+				return
+			}
 		}
-		ch <- ir.Event{Version: ir.Version, Type: ir.EventUsage, Usage: &resp.Usage}
-		ch <- ir.Event{Version: ir.Version, Type: ir.EventStop, StopReason: resp.StopReason}
+		select {
+		case ch <- ir.Event{Version: ir.Version, Type: ir.EventUsage, Usage: &resp.Usage}:
+		case <-ctx.Done():
+			return
+		}
+		select {
+		case ch <- ir.Event{Version: ir.Version, Type: ir.EventStop, StopReason: resp.StopReason}:
+		case <-ctx.Done():
+		}
 	}()
 	return ch, nil
 }

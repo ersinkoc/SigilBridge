@@ -247,11 +247,30 @@ func parseAnthropicStream(body io.ReadCloser, ch chan<- ir.Event) {
 			var payload struct {
 				Index int `json:"index"`
 				Delta struct {
-					Text string `json:"text"`
+					Type        string `json:"type"`
+					Text       string `json:"text,omitempty"`
+					PartialJSON string `json:"partial_json,omitempty"`
 				} `json:"delta"`
 			}
 			if json.Unmarshal([]byte(data), &payload) == nil {
-				ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Index: payload.Index, Delta: &ir.ContentBlock{Type: ir.ContentText, Text: payload.Delta.Text}}
+				switch payload.Delta.Type {
+				case "text_delta":
+					ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Index: payload.Index, Delta: &ir.ContentBlock{Type: ir.ContentText, Text: payload.Delta.Text}}
+				case "input_json_delta":
+					ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Index: payload.Index, Delta: &ir.ContentBlock{Type: ir.ContentToolUse, ToolUse: &ir.ToolUse{Arguments: map[string]any{"__partial": payload.Delta.PartialJSON}}}}
+				}
+			}
+		case "content_block_start":
+			var payload struct {
+				Index int `json:"index"`
+				Block struct {
+					Type string `json:"type"`
+					ID   string `json:"id,omitempty"`
+					Name string `json:"name,omitempty"`
+				} `json:"content_block"`
+			}
+			if json.Unmarshal([]byte(data), &payload) == nil && payload.Block.Type == "tool_use" {
+				ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockStart, Index: payload.Index, Delta: &ir.ContentBlock{Type: ir.ContentToolUse, ToolUse: &ir.ToolUse{ID: payload.Block.ID, Name: payload.Block.Name}}}
 			}
 		case "message_stop":
 			ch <- ir.Event{Version: ir.Version, Type: ir.EventStop, StopReason: ir.StopEndTurn}

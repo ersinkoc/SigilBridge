@@ -124,9 +124,29 @@ func EventsToAnthropicStream(responseID, model string, events <-chan Event) ([]b
 			payload = map[string]any{"type": typ, "index": event.Index, "content_block": block}
 		case EventDelta, EventContentBlockDelta:
 			typ = "content_block_delta"
-			payload = map[string]any{"type": typ, "index": event.Index, "delta": map[string]any{"type": "text_delta", "text": ""}}
-			if event.Delta != nil && event.Delta.Type == ContentText {
-				payload["delta"] = map[string]any{"type": "text_delta", "text": event.Delta.Text}
+			if event.Delta != nil {
+				switch event.Delta.Type {
+				case ContentText:
+					payload = map[string]any{"type": typ, "index": event.Index, "delta": map[string]any{"type": "text_delta", "text": event.Delta.Text}}
+				case ContentToolUse:
+					delta := map[string]any{"type": "input_json_delta"}
+					if event.Delta.ToolUse != nil {
+						if event.Delta.ToolUse.Name != "" {
+							delta["name"] = event.Delta.ToolUse.Name
+						}
+						if event.Delta.ToolUse.ID != "" {
+							delta["id"] = event.Delta.ToolUse.ID
+						}
+						if partial, ok := event.Delta.ToolUse.Arguments["__partial"].(string); ok {
+							delta["partial_json"] = partial
+						}
+					}
+					payload = map[string]any{"type": typ, "index": event.Index, "delta": delta}
+				default:
+					payload = map[string]any{"type": typ, "index": event.Index, "delta": map[string]any{"type": "text_delta", "text": ""}}
+				}
+			} else {
+				payload = map[string]any{"type": typ, "index": event.Index, "delta": map[string]any{"type": "text_delta", "text": ""}}
 			}
 		case EventContentBlockStop:
 			typ = "content_block_stop"

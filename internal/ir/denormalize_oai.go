@@ -116,8 +116,32 @@ func EventsToOAIStream(responseID, model string, events <-chan Event) ([]byte, e
 		case EventStart:
 			choice["delta"] = map[string]any{"role": RoleAssistant}
 		case EventDelta, EventContentBlockDelta:
-			if event.Delta != nil && event.Delta.Type == ContentText {
-				choice["delta"] = map[string]any{"content": event.Delta.Text}
+			if event.Delta != nil {
+				switch event.Delta.Type {
+				case ContentText:
+					choice["delta"] = map[string]any{"content": event.Delta.Text}
+				case ContentToolUse:
+					if event.Delta.ToolUse != nil {
+						choice["delta"] = map[string]any{
+							"role": RoleAssistant,
+							"tool_calls": []map[string]any{
+								{
+									"id":       event.Delta.ToolUse.ID,
+									"index":    event.Index,
+									"type":     "function",
+									"function": map[string]any{
+										"name":      event.Delta.ToolUse.Name,
+										"arguments": event.Delta.ToolUse.Arguments["__partial"],
+									},
+								},
+							},
+						}
+					} else {
+						choice["delta"] = map[string]any{}
+					}
+				default:
+					choice["delta"] = map[string]any{}
+				}
 			} else {
 				choice["delta"] = map[string]any{}
 			}

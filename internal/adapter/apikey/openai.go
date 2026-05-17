@@ -261,14 +261,31 @@ func parseOAIStream(body io.ReadCloser, ch chan<- ir.Event) {
 		var chunk struct {
 			Choices []struct {
 				Delta struct {
-					Content string `json:"content"`
+					Content    string `json:"content"`
+					Role       string `json:"role,omitempty"`
+					ToolCalls  []struct {
+						ID         string `json:"id"`
+						Index      int    `json:"index"`
+						Function   struct {
+							Name      string `json:"name"`
+							Arguments string `json:"arguments"`
+						} `json:"function"`
+					} `json:"tool_calls,omitempty"`
 				} `json:"delta"`
 				FinishReason string `json:"finish_reason"`
 			} `json:"choices"`
 		}
 		if json.Unmarshal([]byte(data), &chunk) == nil && len(chunk.Choices) > 0 {
-			if chunk.Choices[0].Delta.Content != "" {
-				ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Delta: &ir.ContentBlock{Type: ir.ContentText, Text: chunk.Choices[0].Delta.Content}}
+			delta := &chunk.Choices[0].Delta
+			if delta.Content != "" {
+				ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Delta: &ir.ContentBlock{Type: ir.ContentText, Text: delta.Content}}
+			}
+			for _, tc := range delta.ToolCalls {
+				args := map[string]any{"__partial": tc.Function.Arguments}
+				if tc.Function.Arguments == "" {
+					args = map[string]any{"__partial": ""}
+				}
+				ch <- ir.Event{Version: ir.Version, Type: ir.EventContentBlockDelta, Index: tc.Index, Delta: &ir.ContentBlock{Type: ir.ContentToolUse, ToolUse: &ir.ToolUse{ID: tc.ID, Name: tc.Function.Name, Arguments: args}}}
 			}
 			if chunk.Choices[0].FinishReason != "" {
 				ch <- ir.Event{Version: ir.Version, Type: ir.EventStop, StopReason: stopFromOAIFinish(chunk.Choices[0].FinishReason)}
